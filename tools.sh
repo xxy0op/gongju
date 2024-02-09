@@ -170,6 +170,7 @@ display_menu() {
     echo "9. 安装 dd_alpine 脚本"
     echo "10. 安装 Alpine XrayR 脚本"
 	echo "11. 添加swap分区"
+	echo "12. 检查更新"  # 添加检查更新选项
     echo "0. 退出脚本"  # 退出脚本选项
 }
 
@@ -190,6 +191,7 @@ while true; do
         9) install_dd_alpine ;;   # 对于选项 9，调用 install_dd_alpine 函数
         10) install_alpine_xrayr ;;   # 对于选项 10，调用 install_alpine_xrayr 函数
 		11) add_swap_partition ;;   # 对于选项 11，调用 add_swap_partition 函数
+		12) check_update ;;  # 对于选项 12，调用 check_update 函数
         *) echo "无效的选择。请输入 0 到 10 之间的数字。" ;;   # 对于无效选择，显示错误消息
     esac
 done  
