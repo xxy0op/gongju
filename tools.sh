@@ -262,6 +262,6 @@ while true; do
         10) install_alpine_xrayr ;;   # 对于选项 10，调用 install_alpine_xrayr 函数
 		11) add_swap_partition ;;   # 对于选项 11，调用 add_swap_partition 函数
 		12) check_update ;;  # 对于选项 12，调用 check_update 函数
-        *) echo "退出脚本..."; exit ;;   # 对于无效选择，退出脚本
+        *) echo "退出脚本,请输入有效选择..."; exit ;;   # 对于无效选择，退出脚本
     esac
 done  
