@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 版本号
-VERSION="1.5.5"
+VERSION="1.5.6"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -55,17 +55,18 @@ check_update() {
 # 卸载脚本函数
 uninstall_script() {
     echo "确定要卸载脚本吗？ [默认n]:"
-    read -r confirm_uninstall
-    if [[ "$confirm_uninstall" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-        # 执行卸载操作
+    read -r uninstall_response
+    if [[ "$uninstall_response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
         echo "卸载成功！"
         # 删除脚本文件
-        sudo rm "/usr/local/bin/$SCRIPT_NAME"
+        rm "/usr/local/bin/$SCRIPT_NAME" -f
         echo "脚本文件已成功删除。"
+        exit 0
     else
-        echo "取消卸载操作。"
+        echo "取消卸载。"
     fi
 }
+
 
 # 获取当前版本号函数
 get_version() {
