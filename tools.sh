@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 版本号
-VERSION="1.5.1"
+VERSION="1.5.2"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -21,28 +21,37 @@ fi
 
 # 检查更新函数
 check_update() {
-    echo "检查更新..."
+    echo "检查更新..."  # 提示用户正在进行更新检查操作
     # 获取远程版本号
     REMOTE_VERSION=$(curl -s https://raw.githubusercontent.com/xxy0op/gongju/master/version.txt)
-    if [[ "$REMOTE_VERSION" != "$VERSION" ]]; then
-        echo "发现新版本 $REMOTE_VERSION，是否更新？[Y/n]"
-        read -r response
-        if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-            # 下载新版本的脚本
-            wget -q https://raw.githubusercontent.com/xxy0op/gongju/master/tools.sh -O tools.sh.new
-            # 备份旧版本
-            mv /usr/local/bin/tools.sh /usr/local/bin/tools.sh.old
-            # 将新版本移动到正确的位置
-            mv tools.sh.new /usr/local/bin/tools.sh
-            # 添加执行权限
-            chmod +x /usr/local/bin/tools.sh
-            echo "更新完成，重新运行脚本..."
-            exec "/usr/local/bin/tools.sh" "$@"
+    if [[ -n "$REMOTE_VERSION" ]]; then  # 检查是否成功获取远程版本号
+        if [[ "$REMOTE_VERSION" != "$VERSION" ]]; then
+            echo "发现新版本 $REMOTE_VERSION，是否更新？[Y/n]"
+            read -r response
+            if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+                # 下载新版本的脚本
+                wget -q https://raw.githubusercontent.com/xxy0op/gongju/master/tools.sh -O tools.sh.new
+                if [[ -s "tools.sh.new" ]]; then  # 检查是否成功下载新版本的脚本
+                    # 备份旧版本
+                    mv /usr/local/bin/tools.sh /usr/local/bin/tools.sh.old
+                    # 将新版本移动到正确的位置
+                    mv tools.sh.new /usr/local/bin/tools.sh
+                    # 添加执行权限
+                    chmod +x /usr/local/bin/tools.sh
+                    echo "更新完成，重新运行脚本..."
+                    exec "/usr/local/bin/tools.sh" "$@"
+                else
+                    echo "下载新版本失败，无法更新。"
+                fi
+            fi
+        else 
+            echo "已经是最新版本。"
         fi
-    else 
-        echo "已经是最新版本。"
+    else
+        echo "无法获取远程版本信息，检查网络连接或稍后重试。"
     fi
 }
+
 
 # 获取当前版本号函数
 get_version() {
