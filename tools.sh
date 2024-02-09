@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 版本号
-VERSION="1.4"
+VERSION="1.5"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -42,6 +42,11 @@ check_update() {
     else 
         echo "已经是最新版本。"
     fi
+}
+
+# 获取当前版本号函数
+get_version() {
+    echo "当前版本号：$VERSION"
 }
 
 # 安装 XrayR 脚本
@@ -195,6 +200,8 @@ add_swap_partition() {
 
 # 显示菜单函数
 display_menu() {
+    # 显示当前版本号
+    get_version # 调用获取版本号函数
     echo "请选择一个选项："
     echo "1. 安装 XrayR 脚本"
     echo "2. 运行融合怪测评脚本"
