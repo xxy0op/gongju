@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# 版本号
+VERSION="1.0"
+
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
 SCRIPT_NAME=$(basename "$0")
@@ -15,6 +18,27 @@ if [ ! -f "/usr/local/bin/$SCRIPT_NAME" ]; then
     echo "您可以直接在命令行中使用 $SCRIPT_NAME 打开脚本"
     exit 0
 fi
+
+# 检查更新函数
+check_update() {
+    echo "检查更新..."
+    # 获取远程版本号
+    REMOTE_VERSION=$(curl -s https://raw.githubusercontent.com/your_username/your_repository/master/version.txt)
+    if [[ "$REMOTE_VERSION" != "$VERSION" ]]; then
+        echo "发现新版本 $REMOTE_VERSION，是否更新？[Y/n]"
+        read -r response
+        if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+            # 下载并应用更新
+            wget -q https://raw.githubusercontent.com/your_username/your_repository/master/tools.sh -O tools.sh.new
+            mv tools.sh.new tools.sh
+            chmod +x tools.sh
+            echo "更新完成，重新运行脚本..."
+            exec "./tools.sh" "$@"
+        fi
+    else
+        echo "已经是最新版本。"
+    fi
+}
 
 # 安装 XrayR 脚本
 install_xrayr() {
