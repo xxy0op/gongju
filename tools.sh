@@ -97,6 +97,41 @@ install_bt6() {
     wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && sudo bash install.sh
 }
 
+# 添加swap分区函数
+add_swap_partition() {
+    echo "开始创建swap分区"
+
+    # 获取用户输入的swap分区大小（单位：GB）
+    read -p "请输入要创建的swap分区大小（单位：GB）：" swap_size_gb
+    # 将GB转换为MB
+    swap_size_mb=$((swap_size_gb * 1024))
+    # 检查输入是否为正整数
+    if ! [[ $swap_size_gb =~ ^[0-9]+$ ]]; then
+        echo "错误：请输入一个正整数。"
+        return 1
+    fi
+
+    echo "1. 使用dd命令创建一个swap分区，创建一个 ${swap_size_gb}GB 大小的分区"
+    # 创建swap分区文件
+    dd if=/dev/zero of=/root/swapfile bs=1M count="$swap_size_mb"
+
+    echo "2. 格式化新建的分区文件"
+    # 格式化新建的swap分区文件
+    mkswap /root/swapfile
+
+    echo "3. 将新建的分区文件设为swap分区"
+    # 将新建的分区文件设为swap分区
+    swapon /root/swapfile
+
+    echo "4. 设置开机自动挂载swap分区"
+    # 设置开机自动挂载swap分区
+    echo "/root/swapfile swap swap defaults 0 0" >> /etc/fstab
+
+    echo "5. 查看分区情况"
+    # 查看分区情况
+    free -h
+}
+
 # 显示菜单函数
 display_menu() {
     echo "请选择一个选项："
@@ -110,6 +145,7 @@ display_menu() {
     echo "8. 安装 bbr 脚本"
     echo "9. 安装 dd_alpine 脚本"
     echo "10. 安装 Alpine XrayR 脚本"
+	echo "11. 添加swap分区"
     echo "0. 退出脚本"  # 退出脚本选项
 }
 
@@ -129,6 +165,7 @@ while true; do
         8) install_bbr ;;   # 对于选项 8，调用 install_bbr 函数
         9) install_dd_alpine ;;   # 对于选项 9，调用 install_dd_alpine 函数
         10) install_alpine_xrayr ;;   # 对于选项 10，调用 install_alpine_xrayr 函数
+		11) add_swap_partition ;;   # 对于选项 11，调用 add_swap_partition 函数
         *) echo "无效的选择。请输入 0 到 10 之间的数字。" ;;   # 对于无效选择，显示错误消息
     esac
 done  
