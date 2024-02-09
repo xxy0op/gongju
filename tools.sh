@@ -29,7 +29,7 @@ check_update() {
         read -r response
         if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
             # 下载并应用更新
-            wget -q https://raw.githubusercontent.com/your_username/your_repository/master/tools.sh -O tools.sh.new
+            wget -q https://raw.githubusercontent.com/xxy0op/gongju/master/tools.sh -O tools.sh.new
             mv tools.sh.new tools.sh
             chmod +x tools.sh
             echo "更新完成，重新运行脚本..."
