@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 版本号
-VERSION="1.5.3"
+VERSION="1.5.4"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -52,6 +52,20 @@ check_update() {
     fi
 }
 
+# 卸载脚本函数
+uninstall_script() {
+    echo "确定要卸载脚本吗？ [默认n]:"
+    read -r confirm_uninstall
+    if [[ "$confirm_uninstall" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+        # 执行卸载操作
+        echo "卸载成功！"
+        # 删除脚本文件
+        sudo rm "/usr/local/bin/$SCRIPT_NAME"
+        echo "脚本文件已成功删除。"
+    else
+        echo "取消卸载操作。"
+    fi
+}
 
 # 获取当前版本号函数
 get_version() {
@@ -224,7 +238,7 @@ display_menu() {
     echo "10. 安装 Alpine XrayR 脚本"
 	echo "11. 添加swap分区"
 	echo "12. 检查更新"  # 添加检查更新选项
-    echo "0. 退出脚本"  # 退出脚本选项
+    echo "0. 卸载脚本"  # 修改卸载脚本选项
 	
 	# 恢复颜色为默认颜色
     echo -e "\e[39m"
@@ -248,6 +262,6 @@ while true; do
         10) install_alpine_xrayr ;;   # 对于选项 10，调用 install_alpine_xrayr 函数
 		11) add_swap_partition ;;   # 对于选项 11，调用 add_swap_partition 函数
 		12) check_update ;;  # 对于选项 12，调用 check_update 函数
-        *) echo "无效的选择。请输入 0 到 10 之间的数字。" ;;   # 对于无效选择，显示错误消息
+        *) echo "退出脚本..."; exit ;;   # 对于无效选择，退出脚本
     esac
 done  
