@@ -94,13 +94,15 @@ display_menu() {
     echo "8. 安装 bbr 脚本"
     echo "9. 安装 dd_alpine 脚本"
     echo "10. 安装 Alpine XrayR 脚本"
+    echo "0. 退出脚本"  # 退出脚本选项
 }
 
 # 主脚本
 while true; do
     display_menu
-    read -p "请输入您的选择（1-10）：" choice
+    read -p "请输入您的选择（0-10）：" choice
     case $choice in
+        0) echo "退出脚本..."; exit ;;   # 对于选项 0，退出脚本
         1) install_xrayr ;;   # 对于选项 1，调用 install_xrayr 函数
         2) run_fusion_script ;;   # 对于选项 2，调用 run_fusion_script 函数
         3) nxtrace ;;   # 对于选项 3，调用 nxtrace 函数
@@ -111,6 +113,6 @@ while true; do
         8) install_bbr ;;   # 对于选项 8，调用 install_bbr 函数
         9) install_dd_alpine ;;   # 对于选项 9，调用 install_dd_alpine 函数
         10) install_alpine_xrayr ;;   # 对于选项 10，调用 install_alpine_xrayr 函数
-        *) echo "无效的选择。请输入 1 到 10 之间的数字。" ;;   # 对于无效选择，显示错误消息
+        *) echo "无效的选择。请输入 0 到 10 之间的数字。" ;;   # 对于无效选择，显示错误消息
     esac
-done
+done  
