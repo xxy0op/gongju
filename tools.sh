@@ -89,13 +89,38 @@ install_speedtest() {
     sudo apt-get install -y speedtest
 }
 
-# 安装 bbr 脚本
-# 第一步，安装BBR，使用命令 toolkit update && toolkit ltskernel。
-# 第二步，安装完毕后询问用户是否重启服务器，如果是则执行重启操作。
-# 第三步，在服务器重启后自动运行 toolkit yeah。
+#安装BBR脚本
 install_bbr() {
     echo "正在安装 bbr 脚本..."
-    toolkit update && toolkit ltskernel
+    # 应用 sysctl 参数
+    echo "Applying sysctl parameters..."
+    echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.d/bbr.conf
+    echo "net.ipv4.tcp_window_scaling = 1" >> /etc/sysctl.d/bbr.conf
+    echo "net.ipv4.tcp_adv_win_scale = -1" >> /etc/sysctl.d/bbr.conf
+    echo "net.ipv4.tcp_timestamps = 1" >> /etc/sysctl.d/bbr.conf
+    echo "net.ipv4.tcp_no_metrics_save = 1" >> /etc/sysctl.d/bbr.conf
+    echo "net.ipv4.conf.default.rp_filter = 1" >> /etc/sysctl.d/bbr.conf
+    echo "net.ipv4.conf.all.rp_filter = 1" >> /etc/sysctl.d/bbr.conf
+    echo "net.ipv4.conf.default.accept_source_route = 0" >> /etc/sysctl.d/bbr.conf
+    echo "net.ipv4.tcp_rmem = 8192 87380 33554432" >> /etc/sysctl.d/bbr.conf
+    echo "net.ipv4.tcp_wmem = 4096 16384 33554432" >> /etc/sysctl.d/bbr.conf
+    echo "net.ipv4.udp_rmem_min = 4096" >> /etc/sysctl.d/bbr.conf
+    echo "net.ipv4.udp_wmem_min = 4096" >> /etc/sysctl.d/bbr.conf
+    echo "net.core.default_qdisc = fq" >> /etc/sysctl.d/bbr.conf
+    echo "net.ipv4.tcp_congestion_control = yeah" >> /etc/sysctl.d/bbr.conf
+
+    # 应用其他参数
+    echo "Applying other sysctl parameters..."
+    echo "kernel.pid_max = 4194304" >> /etc/sysctl.d/bbr.conf
+    echo "fs.file-max = 2097152" >> /etc/sysctl.d/bbr.conf
+    echo "fs.protected_hardlinks = 1" >> /etc/sysctl.d/bbr.conf
+    echo "fs.protected_symlinks = 1" >> /etc/sysctl.d/bbr.conf
+    echo "vm.compaction_proactiveness = 0" >> /etc/sysctl.d/bbr.conf
+    echo "vm.extfrag_threshold = 1000" >> /etc/sysctl.d/bbr.conf
+    echo "kernel.core_uses_pid = 1" >> /etc/sysctl.d/bbr.conf
+
+    # 应用所有 sysctl 参数
+    sysctl --system
 
     read -p "安装完成，是否需要重启服务器？[Y/n]" restart_response
     if [[ "$restart_response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
@@ -104,9 +129,6 @@ install_bbr() {
     else
         echo "未选择重启服务器，脚本将继续运行。"
     fi
-
-    echo "服务器已重启，正在运行 toolkit yeah..."
-    toolkit yeah
 }
 
 # 安装 dd_alpine 脚本
