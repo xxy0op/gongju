@@ -23,7 +23,7 @@ fi
 check_update() {
     echo "检查更新..."
     # 获取远程版本号
-    REMOTE_VERSION=$(curl -s https://raw.githubusercontent.com/your_username/your_repository/master/version.txt)
+    REMOTE_VERSION=$(curl -s https://raw.githubusercontent.com/xxy0op/gongju/master/version.txt)
     if [[ "$REMOTE_VERSION" != "$VERSION" ]]; then
         echo "发现新版本 $REMOTE_VERSION，是否更新？[Y/n]"
         read -r response
