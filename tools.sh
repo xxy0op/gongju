@@ -111,23 +111,23 @@ add_swap_partition() {
         return 1
     fi
 
-    echo "1. 使用dd命令创建一个swap分区，创建一个 ${swap_size_gb}GB 大小的分区"
+    echo "1. Create ${swap_size_gb}GB 大小的分区"
     # 创建swap分区文件
     dd if=/dev/zero of=/root/swapfile bs=1M count="$swap_size_mb"
 
-    echo "2. 格式化新建的分区文件"
+    echo "2. Format newly created partition file"
     # 格式化新建的swap分区文件
     mkswap /root/swapfile
 
-    echo "3. 将新建的分区文件设为swap分区"
+    echo "3. Set the newly created partition file as a SWAP partition"
     # 将新建的分区文件设为swap分区
     swapon /root/swapfile
 
-    echo "4. 设置开机自动挂载swap分区"
+    echo "4. Set the swap partition to be automatically mounted at startup"
     # 设置开机自动挂载swap分区
     echo "/root/swapfile swap swap defaults 0 0" >> /etc/fstab
 
-    echo "5. 查看分区情况"
+    echo "5. View partitions"
     # 查看分区情况
     free -h
 }
