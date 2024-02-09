@@ -127,7 +127,7 @@ add_swap_partition() {
     # 设置开机自动挂载swap分区
     echo "/root/swapfile swap swap defaults 0 0" >> /etc/fstab
 
-    echo "5. View partitions"
+    echo "5. After the partition is created, you can enter free -h to view the partition."
     # 查看分区情况
     free -h
 }
