@@ -39,7 +39,7 @@ check_update() {
             echo "更新完成，重新运行脚本..."
             exec "/usr/local/bin/tools.sh" "$@"
         fi
-    else
+    else 
         echo "已经是最新版本。"
     fi
 }
@@ -90,12 +90,23 @@ install_speedtest() {
 }
 
 # 安装 bbr 脚本
+# 第一步，安装BBR，使用命令 toolkit update && toolkit ltskernel。
+# 第二步，安装完毕后询问用户是否重启服务器，如果是则执行重启操作。
+# 第三步，在服务器重启后自动运行 toolkit yeah。
 install_bbr() {
     echo "正在安装 bbr 脚本..."
-    # 备份 sysctl.conf
-    cp /etc/sysctl.conf /etc/sysctl.conf.bak
-    # 执行 bbr 脚本
-    bash <(curl -sL file.vip.ga/toolkit.sh) bbr1
+    toolkit update && toolkit ltskernel
+
+    read -p "安装完成，是否需要重启服务器？[Y/n]" restart_response
+    if [[ "$restart_response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+        echo "正在重启服务器..."
+        reboot
+    else
+        echo "未选择重启服务器，脚本将继续运行。"
+    fi
+
+    echo "服务器已重启，正在运行 toolkit yeah..."
+    toolkit yeah
 }
 
 # 安装 dd_alpine 脚本
