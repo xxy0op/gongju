@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 版本号
-VERSION="1.5.4"
+VERSION="1.5.5"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -249,7 +249,7 @@ while true; do
     display_menu
     read -p "请输入您的选择（0-10）：" choice
     case $choice in
-        0) echo "退出脚本..."; exit ;;   # 对于选项 0，退出脚本
+        0) uninstall_script ;;   # 对于选项 0，调用 uninstall_script 函数
         1) install_xrayr ;;   # 对于选项 1，调用 install_xrayr 函数
         2) run_fusion_script ;;   # 对于选项 2，调用 run_fusion_script 函数
         3) nxtrace ;;   # 对于选项 3，调用 nxtrace 函数
