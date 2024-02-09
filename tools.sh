@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 版本号
-VERSION="1.5"
+VERSION="1.6"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -46,7 +46,7 @@ check_update() {
 
 # 获取当前版本号函数
 get_version() {
-    echo "当前版本号：$VERSION"
+    echo -e "\e[32m当前版本号：$VERSION\e[34m"
 }
 
 # 安装 XrayR 脚本
