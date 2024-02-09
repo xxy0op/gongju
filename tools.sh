@@ -28,12 +28,16 @@ check_update() {
         echo "发现新版本 $REMOTE_VERSION，是否更新？[Y/n]"
         read -r response
         if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-            # 下载并应用更新
+            # 下载新版本的脚本
             wget -q https://raw.githubusercontent.com/xxy0op/gongju/master/tools.sh -O tools.sh.new
-            mv tools.sh.new tools.sh
-            chmod +x tools.sh
+            # 备份旧版本
+            mv /usr/local/bin/tools.sh /usr/local/bin/tools.sh.old
+            # 将新版本移动到正确的位置
+            mv tools.sh.new /usr/local/bin/tools.sh
+            # 添加执行权限
+            chmod +x /usr/local/bin/tools.sh
             echo "更新完成，重新运行脚本..."
-            exec "./tools.sh" "$@"
+            exec "/usr/local/bin/tools.sh" "$@"
         fi
     else
         echo "已经是最新版本。"
