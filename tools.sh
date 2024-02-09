@@ -1,5 +1,21 @@
 #!/bin/bash
 
+# 获取当前脚本的路径
+SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
+SCRIPT_NAME=$(basename "$0")
+
+# 判断是否为第一次运行脚本
+if [ ! -f "/usr/local/bin/$SCRIPT_NAME" ]; then
+    # 将脚本移动到 /usr/local/bin 目录
+    sudo mv "$SCRIPT_PATH/$SCRIPT_NAME" /usr/local/bin/
+    # 添加执行权限
+    sudo chmod +x "/usr/local/bin/$SCRIPT_NAME"
+    # 提示用户脚本已经被移动
+    echo "脚本已移动到 /usr/local/bin 目录并添加执行权限"
+    echo "您可以直接在命令行中使用 $SCRIPT_NAME 打开脚本"
+    exit 0
+fi
+
 # 安装 XrayR 脚本
 install_xrayr() {
     echo "正在安装 XrayR 脚本..."
