@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 版本号
-VERSION="1.6"
+VERSION="1.5.1"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -216,6 +216,9 @@ display_menu() {
 	echo "11. 添加swap分区"
 	echo "12. 检查更新"  # 添加检查更新选项
     echo "0. 退出脚本"  # 退出脚本选项
+	
+	# 恢复颜色为默认颜色
+    echo -e "\e[39m"
 }
 
 # 主脚本
