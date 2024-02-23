@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # 版本号
-VERSION="1.5.6"
+VERSION="1.5.7"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
 SCRIPT_NAME=$(basename "$0")
 
-# 判断是否为第一次运行脚本
+# 判断是否为第一次运行脚本  
 if [ ! -f "/usr/local/bin/$SCRIPT_NAME" ]; then
     # 将脚本移动到 /usr/local/bin 目录
     sudo mv "$SCRIPT_PATH/$SCRIPT_NAME" /usr/local/bin/
@@ -77,7 +77,7 @@ get_version() {
 install_xrayr() {
     echo "正在安装 XrayR 脚本..."
     # 执行 XrayR 安装脚本
-    bash <(curl -Ls https://raw.githubusercontent.com/XrayR-project/XrayR-release/master/install.sh)
+    bash <(curl -Ls https://raw.githubusercontent.com/XrayR-project/XrayR-release/master/install.sh) 0.9.0
 }
 
 # 运行融合怪测评脚本
