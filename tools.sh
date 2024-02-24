@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 版本号
-VERSION="1.5.7"
+VERSION="1.5.8"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -222,6 +222,16 @@ add_swap_partition() {
     free -h
 }
 
+# 下载并运行Cloudflare DDNS脚本
+download_and_run_cloudflare_ddns() {
+    echo "正在下载并运行 Cloudflare DDNS 脚本..."
+    # 下载 Cloudflare DDNS 脚本
+    wget -O /root/cloudflareddns.sh https://raw.githubusercontent.com/xxy0op/cloudflareddns/main/cloudflareddns.sh
+    # 添加执行权限
+    chmod +x /root/cloudflareddns.sh
+    # 执行 Cloudflare DDNS 脚本
+    /root/cloudflareddns.sh
+}
 # 显示菜单函数
 display_menu() {
     # 显示当前版本号
