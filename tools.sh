@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 版本号
-VERSION="1.5.8"
+VERSION="1.5.9"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -232,6 +232,7 @@ download_and_run_cloudflare_ddns() {
     # 执行 Cloudflare DDNS 脚本
     /root/cloudflareddns.sh
 }
+
 # 显示菜单函数
 display_menu() {
     # 显示当前版本号
@@ -249,6 +250,7 @@ display_menu() {
     echo "10. 安装 Alpine XrayR 脚本"
 	echo "11. 添加swap分区"
 	echo "12. 检查更新"  # 添加检查更新选项
+	echo "13. 下载并运行 Cloudflare DDNS 脚本"  # 新增下载并运行 Cloudflare DDNS 脚本选项
     echo "0. 卸载脚本"  # 修改卸载脚本选项
 	
 	# 恢复颜色为默认颜色
@@ -273,6 +275,7 @@ while true; do
         10) install_alpine_xrayr ;;   # 对于选项 10，调用 install_alpine_xrayr 函数
 		11) add_swap_partition ;;   # 对于选项 11，调用 add_swap_partition 函数
 		12) check_update ;;  # 对于选项 12，调用 check_update 函数
+		13) download_and_run_cloudflare_ddns ;;   # 对于选项 13，调用 download_and_run_cloudflare_ddns 函数
         *) echo -e "\e[33m退出脚本,请输入有效选择...\e[39m"; exit ;;   # 对于无效选择，退出脚本
     esac
 done  
