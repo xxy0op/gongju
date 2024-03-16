@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 版本号
-VERSION="1.5.9"
+VERSION="1.6.0"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -118,47 +118,60 @@ install_speedtest() {
     sudo apt-get install -y speedtest
 }
 
-#安装BBR脚本
-install_bbr() {
-    echo "正在安装 bbr 脚本..."
+# 安装Yeah脚本
+install_yeah() {
+    echo "正在安装 yeah 脚本..."
+    # 准备sysctl参数
+    declare -A params=(
+        ["net.ipv4.ip_forward"]="1"
+        ["net.ipv4.tcp_window_scaling"]="1"
+        ["net.ipv4.tcp_adv_win_scale"]="-1"
+        ["net.ipv4.tcp_timestamps"]="1"
+        ["net.ipv4.tcp_no_metrics_save"]="1"
+        ["net.ipv4.conf.default.rp_filter"]="1"
+        ["net.ipv4.conf.all.rp_filter"]="1"
+        ["net.ipv4.conf.default.accept_source_route"]="0"
+        ["net.ipv4.tcp_rmem"]="8192 87380 33554432"
+        ["net.ipv4.tcp_wmem"]="4096 16384 33554432"
+        ["net.ipv4.udp_rmem_min"]="4096"
+        ["net.ipv4.udp_wmem_min"]="4096"
+        ["net.core.default_qdisc"]="fq"
+        ["net.ipv4.tcp_congestion_control"]="yeah"
+        ["kernel.pid_max"]="4194304"
+        ["fs.file-max"]="2097152"
+        ["fs.protected_hardlinks"]="1"
+        ["fs.protected_symlinks"]="1"
+        ["vm.compaction_proactiveness"]="0"
+        ["vm.extfrag_threshold"]="1000"
+        ["kernel.core_uses_pid"]="1"
+    )
+
     # 应用 sysctl 参数
     echo "Applying sysctl parameters..."
-    echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.d/bbr.conf
-    echo "net.ipv4.tcp_window_scaling = 1" >> /etc/sysctl.d/bbr.conf
-    echo "net.ipv4.tcp_adv_win_scale = -1" >> /etc/sysctl.d/bbr.conf
-    echo "net.ipv4.tcp_timestamps = 1" >> /etc/sysctl.d/bbr.conf
-    echo "net.ipv4.tcp_no_metrics_save = 1" >> /etc/sysctl.d/bbr.conf
-    echo "net.ipv4.conf.default.rp_filter = 1" >> /etc/sysctl.d/bbr.conf
-    echo "net.ipv4.conf.all.rp_filter = 1" >> /etc/sysctl.d/bbr.conf
-    echo "net.ipv4.conf.default.accept_source_route = 0" >> /etc/sysctl.d/bbr.conf
-    echo "net.ipv4.tcp_rmem = 8192 87380 33554432" >> /etc/sysctl.d/bbr.conf
-    echo "net.ipv4.tcp_wmem = 4096 16384 33554432" >> /etc/sysctl.d/bbr.conf
-    echo "net.ipv4.udp_rmem_min = 4096" >> /etc/sysctl.d/bbr.conf
-    echo "net.ipv4.udp_wmem_min = 4096" >> /etc/sysctl.d/bbr.conf
-    echo "net.core.default_qdisc = fq" >> /etc/sysctl.d/bbr.conf
-    echo "net.ipv4.tcp_congestion_control = yeah" >> /etc/sysctl.d/bbr.conf
-
-    # 应用其他参数
-    echo "Applying other sysctl parameters..."
-    echo "kernel.pid_max = 4194304" >> /etc/sysctl.d/bbr.conf
-    echo "fs.file-max = 2097152" >> /etc/sysctl.d/bbr.conf
-    echo "fs.protected_hardlinks = 1" >> /etc/sysctl.d/bbr.conf
-    echo "fs.protected_symlinks = 1" >> /etc/sysctl.d/bbr.conf
-    echo "vm.compaction_proactiveness = 0" >> /etc/sysctl.d/bbr.conf
-    echo "vm.extfrag_threshold = 1000" >> /etc/sysctl.d/bbr.conf
-    echo "kernel.core_uses_pid = 1" >> /etc/sysctl.d/bbr.conf
+    for param in "${!params[@]}"; do
+        value=${params[$param]}
+        if grep -q "^$param" /etc/sysctl.conf; then
+            # 如果存在，则使用sed命令更新其值
+            sed -i "s/^$param.*/$param = $value/" /etc/sysctl.conf
+        else
+            # 如果不存在，则追加到文件末尾
+            echo "$param = $value" >> /etc/sysctl.conf
+        fi
+    done
 
     # 应用所有 sysctl 参数
     sysctl --system
 
+    # 询问是否需要重启
     read -p "安装完成，是否需要重启服务器？[Y/n]" restart_response
-    if [[ "$restart_response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+    if [[ "$restart_response" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
         echo "正在重启服务器..."
         reboot
     else
         echo "未选择重启服务器，脚本将继续运行。"
     fi
 }
+
 
 # 安装 dd_alpine 脚本
 install_dd_alpine() {
@@ -245,7 +258,7 @@ display_menu() {
     echo "5. 运行 流媒体测试 脚本"
     echo "6. 安装 宝塔6.0 脚本"
     echo "7. 安装 speedtest 脚本"
-    echo "8. 安装 bbr 脚本"
+    echo "8. 安装 yeah 脚本"
     echo "9. 安装 dd_alpine 脚本"
     echo "10. 安装 Alpine XrayR 脚本"
 	echo "11. 添加swap分区"
@@ -270,7 +283,7 @@ while true; do
         5) run_streaming_test ;;   # 对于选项 5，调用 run_streaming_test 函数
         6) install_bt6 ;;   # 对于选项 6，调用 install_bt6 函数
         7) install_speedtest ;;   # 对于选项 7，调用 install_speedtest 函数
-        8) install_bbr ;;   # 对于选项 8，调用 install_bbr 函数
+        8) install_yeah ;;   # 对于选项 8，调用 install_yeah 函数
         9) install_dd_alpine ;;   # 对于选项 9，调用 install_dd_alpine 函数
         10) install_alpine_xrayr ;;   # 对于选项 10，调用 install_alpine_xrayr 函数
 		11) add_swap_partition ;;   # 对于选项 11，调用 add_swap_partition 函数
