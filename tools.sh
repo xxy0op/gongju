@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 版本号
-VERSION="1.6.0"
+VERSION="1.6.1"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
