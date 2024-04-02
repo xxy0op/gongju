@@ -105,7 +105,7 @@ install_warp() {
 run_streaming_test() {
     echo "运行流媒体测试脚本..."
     # 执行流媒体测试脚本
-    bash <(curl -L -s https://netflix.dad/detect-script)
+    bash <(curl -L -s media.ispvps.com)
 }
 
 # 安装 speedtest 脚本
