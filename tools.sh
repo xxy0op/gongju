@@ -1,7 +1,18 @@
 #!/bin/bash
 
+# ANSI Color Codes
+green='\033[0;32m'
+plain='\033[0m'
+
+# Display Banner in Green
+echo -e "${green}   ___   __  ___   __  ___ ${plain}"
+echo -e "${green}  <  /  /  |/  /  /  |/  / ${plain}"
+echo -e "${green}  / /  / /|_/ /  / /|_/ /  ${plain}"
+echo -e "${green} /_/  /_/  /_/  /_/  /_/   ${plain}"
+
+
 # 版本号
-VERSION="1.6.1"
+VERSION="1.6.2"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
