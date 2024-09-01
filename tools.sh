@@ -5,15 +5,20 @@ green='\033[0;32m'
 plain='\033[0m'
 
 # Display Banner in Green
-echo -e "${green}  ____   ___   ____ ${plain}"
-echo -e "${green} |  _| |  _| |  _| ${plain}"
-echo -e "${green} |  _| |  _| |  _| ${plain}"
-echo -e "${green} |____| |____| |____|${plain}"
+echo -e "${green}     _  _             _  _            _  _  _  ${plain}"
+echo -e "${green}  _ (_)(_) _       _ (_)(_) _      _ (_)(_)(_) _  ${plain}"
+echo -e "${green} (_)      (_)     (_)      (_)    (_)         (_) ${plain}"
+echo -e "${green}(_)        (_)   (_)        (_)             _ (_) ${plain}"
+echo -e "${green}(_)        (_)   (_)        (_)          _ (_)    ${plain}"
+echo -e "${green}(_)        (_)   (_)        (_)       _ (_)       ${plain}"
+echo -e "${green} (_) _  _ (_)     (_) _  _ (_)     _ (_) _  _  _  ${plain}"
+echo -e "${green}    (_)(_)           (_)(_)       (_)(_)(_)(_)(_) ${plain}"
+
 
 
 
 # 版本号
-VERSION="1.6.5"
+VERSION="1.6.6"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
