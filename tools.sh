@@ -5,14 +5,15 @@ green='\033[0;32m'
 plain='\033[0m'
 
 # Display Banner in Green
-echo -e "${green}   ___   __  ___   __  ___ ${plain}"
-echo -e "${green}  <  /  /  |/  /  /  |/  / ${plain}"
-echo -e "${green}  / /  / /|_/ /  / /|_/ /  ${plain}"
-echo -e "${green} /_/  /_/  /_/  /_/  /_/   ${plain}"
+echo -e "${green}  ____   ___   ____ ${plain}"
+echo -e "${green} |  _| |  _| |  _| ${plain}"
+echo -e "${green} |  _| |  _| |  _| ${plain}"
+echo -e "${green} |____| |____| |____|${plain}"
+
 
 
 # 版本号
-VERSION="1.6.4"
+VERSION="1.6.5"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -155,6 +156,9 @@ install_yeah() {
         ["vm.compaction_proactiveness"]="0"
         ["vm.extfrag_threshold"]="1000"
         ["kernel.core_uses_pid"]="1"
+		["net.ipv6.conf.all.disable_ipv6"]="1"
+		["net.ipv6.conf.default.disable_ipv6"]="1"
+		["net.ipv6.conf.lo.disable_ipv6"]="1"
     )
 
     # 应用 sysctl 参数
