@@ -18,7 +18,7 @@ echo -e "${green}    (_)(_)           (_)(_)       (_)(_)(_)(_)(_) ${plain}"
 
 
 # 版本号
-VERSION="1.6.7"
+VERSION="1.6.8"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
