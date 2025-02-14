@@ -1,24 +1,35 @@
 #!/bin/bash
 
-# ANSI Color Codes
+# ANSI 颜色代码
 green='\033[0;32m'
 plain='\033[0m'
 
-# Display Banner in Green
-echo -e "${green}     _  _             _  _            _  _  _  ${plain}"
-echo -e "${green}  _ (_)(_) _       _ (_)(_) _      _ (_)(_)(_) _  ${plain}"
-echo -e "${green} (_)      (_)     (_)      (_)    (_)         (_) ${plain}"
-echo -e "${green}(_)        (_)   (_)        (_)             _ (_) ${plain}"
-echo -e "${green}(_)        (_)   (_)        (_)          _ (_)    ${plain}"
-echo -e "${green}(_)        (_)   (_)        (_)       _ (_)       ${plain}"
-echo -e "${green} (_) _  _ (_)     (_) _  _ (_)     _ (_) _  _  _  ${plain}"
-echo -e "${green}    (_)(_)           (_)(_)       (_)(_)(_)(_)(_) ${plain}"
+# 显示绿色横幅
+echo -e "${green}"
+echo "                                                                   "
+echo "                                       bbbbbbbb                    "
+echo "                                       b::::::b                    "
+echo "                                       b::::::b                    "
+echo "                                       b::::::b                    "
+echo "                                        b:::::b                    "
+echo "rrrrr   rrrrrrrrr       eeeeeeeeeeee    b:::::bbbbbbbbb            "
+echo "r::::rrr:::::::::r    ee::::::::::::ee  b::::::::::::::bb          "
+echo "r:::::::::::::::::r  e::::::eeeee:::::eeb::::::::::::::::b         "
+echo "rr::::::rrrrr::::::re::::::e     e:::::eb:::::bbbbb:::::::b        "
+echo " r:::::r     r:::::re:::::::eeeee::::::eb:::::b    b::::::b        "
+echo " r:::::r     rrrrrrre:::::::::::::::::e b:::::b     b:::::b        "
+echo " r:::::r            e::::::eeeeeeeeeee  b:::::b     b:::::b        "
+echo " r:::::r            e:::::::e           b:::::b     b:::::b        "
+echo " r:::::r            e::::::::e          b:::::bbbbbb::::::b        "
+echo " r:::::r             e::::::::eeeeeeee  b::::::::::::::::b  ...... "
+echo " r:::::r              ee:::::::::::::e  b:::::::::::::::b   .::::. "
+echo " rrrrrrr                eeeeeeeeeeeeee  bbbbbbbbbbbbbbbb    ...... "
 
-
+echo -e "${plain}"
 
 
 # 版本号
-VERSION="1.6.8"
+VERSION="2.0"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -37,7 +48,7 @@ if [ ! -f "/usr/local/bin/$SCRIPT_NAME" ]; then
 fi
 
 # 检查更新函数
-check_update() {
+update() {
     echo "检查更新..."  # 提示用户正在进行更新检查操作
     # 获取远程版本号
     REMOTE_VERSION=$(curl -s https://raw.githubusercontent.com/xxy0op/gongju/master/version.txt)
@@ -84,49 +95,27 @@ uninstall_script() {
     fi
 }
 
-
 # 获取当前版本号函数
 get_version() {
     echo -e "\e[32m当前版本号：$VERSION\e[34m"
 }
 
 # 安装 XrayR 脚本
-install_xrayr() {
+xrayr() {
     echo "正在安装 XrayR 脚本..."
     # 执行 XrayR 安装脚本
     bash <(curl -Ls https://raw.githubusercontent.com/XrayR-project/XrayR-release/master/install.sh) 0.9.0
 }
 
-# 运行融合怪测评脚本
-run_fusion_script() {
-    echo "运行融合怪测评脚本..."
-    # 下载并执行融合怪测评脚本
-    bash <(wget -qO- --no-check-certificate https://gitlab.com/spiritysdx/za/-/raw/main/ecs.sh)
-}
-
-# 安装 nxtrace 脚本
-nxtrace() {
-    echo "正在安装 nxtrace 脚本..."
-    # 使用 curl 下载 nt 脚本并执行
-    curl nxtrace.org/nt | bash
-}
-
 # 安装 Warp 脚本
-install_warp() {
+warp() {
     echo "正在安装 Warp 脚本..."
     # 下载并执行 Warp 安装脚本
     wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && bash menu.sh
 }
 
-# 运行 流媒体测试 脚本
-run_streaming_test() {
-    echo "运行流媒体测试脚本..."
-    # 执行流媒体测试脚本
-    bash <(curl -L -s media.ispvps.com)
-}
-
 # 安装 speedtest 脚本
-install_speedtest() {
+speedtest() {
     echo "正在安装 speedtest 脚本..."
     # 安装 curl
     sudo apt-get install -y curl
@@ -136,7 +125,7 @@ install_speedtest() {
 }
 
 # 安装Yeah脚本
-install_yeah() {
+yeah() {
     echo "正在安装 yeah 脚本..."
     # 准备sysctl参数
     declare -A params=(
@@ -192,36 +181,50 @@ install_yeah() {
     fi
 }
 
-
-# 安装 dd_alpine 脚本
-install_dd_alpine() {
-    echo "正在安装 dd_alpine 脚本..."
-    # 在这里添加运行 dd_alpine 脚本的命令
-    # 示例：下载并执行另一个脚本
-    wget https://www.moerats.com/usr/shell/alpine.sh && \
-    bash alpine.sh
+# 安装 nxtrace 脚本
+nxtrace() {
+    echo "正在安装 nxtrace 脚本..."
+    # 使用 curl 下载 nt 脚本并执行
+    curl nxtrace.org/nt | bash
 }
 
-# 安装 Alpine XrayR 脚本
-install_alpine_xrayr() {
-    echo "正在安装 Alpine XrayR 脚本..."
-    # 下载 Alpine XrayR 安装脚本
-    wget https://github.com/Cd1s/alpineXrayR/releases/download/one-click/install-xrayr.sh && \
+#安装relam脚本
+realm() {
+    bash <(curl -sL download.755955.xyz/realm/install.sh)
+}
+
+# 安装DDNS脚本
+ddns() {
+    echo "正在下载并运行 Cloudflare DDNS 脚本..."
+    # 下载 Cloudflare DDNS 脚本
+    wget -O /root/cloudflareddns.sh https://raw.githubusercontent.com/xxy0op/cloudflareddns/main/cloudflareddns.sh
     # 添加执行权限
-    chmod +x install-xrayr.sh && \
-    # 执行安装脚本
-    bash install-xrayr.sh
+    chmod +x /root/cloudflareddns.sh
+    # 执行 Cloudflare DDNS 脚本
+    /root/cloudflareddns.sh
 }
 
-# 安装 宝塔6.0 脚本
-install_bt6() {
-    echo "正在安装宝塔6.0脚本..."
-    # 下载并执行宝塔6.0安装脚本
-    wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && sudo bash install.sh
+# 运行融合怪脚本
+fusion() {
+    echo "运行融合怪测评脚本..."
+    # 下载并执行融合怪测评脚本
+    bash <(wget -qO- --no-check-certificate https://gitlab.com/spiritysdx/za/-/raw/main/ecs.sh)
+}
+
+# 运行 流媒体测试 脚本
+streaming() {
+    echo "运行流媒体测试脚本..."
+    # 执行流媒体测试脚本
+    bash <(curl -L -s media.ispvps.com)
+}
+
+#运行ip check脚本
+ipcheck() {
+    bash <(curl -sL IP.Check.Place)
 }
 
 # 添加swap分区函数
-add_swap_partition() {
+swap() {
     echo "开始创建swap分区"
 
     # 获取用户输入的swap分区大小（单位：GB）
@@ -255,60 +258,142 @@ add_swap_partition() {
     free -h
 }
 
-# 下载并运行Cloudflare DDNS脚本
-download_and_run_cloudflare_ddns() {
-    echo "正在下载并运行 Cloudflare DDNS 脚本..."
-    # 下载 Cloudflare DDNS 脚本
-    wget -O /root/cloudflareddns.sh https://raw.githubusercontent.com/xxy0op/cloudflareddns/main/cloudflareddns.sh
-    # 添加执行权限
-    chmod +x /root/cloudflareddns.sh
-    # 执行 Cloudflare DDNS 脚本
-    /root/cloudflareddns.sh
+# 安装 bt 
+bt() {
+    echo "正在安装宝塔脚本..."
+    # 下载并执行宝塔安装脚本
+URL=https://www.aapanel.com/script/install_7.0_en.sh && if [ -f /usr/bin/curl ];then curl -ksSO "$URL" ;else wget --no-check-certificate -O install_7.0_en.sh "$URL";fi;bash install_7.0_en.sh aapanel
 }
 
-# 显示菜单函数
+#安装 docker
+docker_install() {
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sh get-docker.sh
+    rm get-docker.sh
+    cleanlog
+    docker_compose_install
+    echo "已安装docker"
+}
+
+docker_compose_install() {
+    local compose_version=$(curl -Ls "https://api.github.com/repos/docker/compose/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    [ -z "${compose_version}" ] && compose_version="v2.30.3"
+	local compose_link=$(echo https://github.com/docker/compose/releases/download/${compose_version}/docker-compose-linux-$(arch))
+    rm /usr/bin/docker-compose -f
+    wget -qO /usr/bin/docker-compose ${compose_link}
+    chmod +x /usr/bin/docker-compose
+    rm /usr/libexec/docker/cli-plugins/docker-compose -f
+    cp /usr/bin/docker-compose /usr/libexec/docker/cli-plugins/docker-compose
+    echo "已安装docker-compose"
+}
+
+#安装 python
+python() {
+    apt install python3-full -y
+    apt install python3-dev -y
+    apt install python3-venv -y
+    apt install pipx -y
+    pipx ensurepath
+}
+
+# 显示主菜单的函数
 display_menu() {
     # 显示当前版本号
     get_version # 调用获取版本号函数
-    echo "请选择一个选项："
-    echo "1. 安装 XrayR 脚本"
-    echo "2. 运行融合怪测评脚本"
-    echo "3. 安装 nxtrace 脚本"
-    echo "4. 安装 Warp 脚本"
-    echo "5. 运行 流媒体测试 脚本"
-    echo "6. 安装 宝塔6.0 脚本"
-    echo "7. 安装 speedtest 脚本"
-    echo "8. 安装 yeah 脚本"
-    echo "9. 安装 dd_alpine 脚本"
-    echo "10. 安装 Alpine XrayR 脚本"
-	echo "11. 添加swap分区"
-	echo "12. 检查更新"  # 添加检查更新选项
-	echo "13. 下载并运行 Cloudflare DDNS 脚本"  # 新增下载并运行 Cloudflare DDNS 脚本选项
-    echo "0. 卸载脚本"  # 修改卸载脚本选项
+	echo "请选择一个选项："
+    echo "1. Network Tools"
+    echo "2. Run Tests"
+    echo "3. Other"
+    echo "4. Check Update"
+    echo "0. Uninstall Script"
 	
 	# 恢复颜色为默认颜色
     echo -e "\e[39m"
 }
 
-# 主脚本
+# 显示network tools的二级菜单
+display_network_tools_menu() {
+    echo "1. install XrayR"
+    echo "2. install Warp"
+    echo "3. install Speedtest"
+    echo "4. install Yeah-bbr"
+	echo "5. install Nxtrace"
+	echo "6. install Realm"
+	echo "7. install ddns"
+    echo "0. return"
+}
+
+# 显示Run tests的二级菜单
+display_run_tests_menu() {
+    echo "1. Run Fusion"
+    echo "2. Run streaming"
+	echo "3. Run ipcheck"
+    echo "0. 返回"
+}
+
+# 显示Other的二级菜单
+display_other_menu() {
+    echo "1. Add swap"
+	echo "2. install bt panel"
+	echo "3. install docker"
+	echo "4. install python"
+    echo "0. 返回"
+}
+
+# 主程序，处理菜单选择
 while true; do
     display_menu
-    read -p "请输入您的选择（0-10）：" choice
+    read -p "请选择一个选项：" choice
     case $choice in
-        0) uninstall_script ;;   # 对于选项 0，调用 uninstall_script 函数
-        1) install_xrayr ;;   # 对于选项 1，调用 install_xrayr 函数
-        2) run_fusion_script ;;   # 对于选项 2，调用 run_fusion_script 函数
-        3) nxtrace ;;   # 对于选项 3，调用 nxtrace 函数
-        4) install_warp ;;   # 对于选项 4，调用 install_warp 函数
-        5) run_streaming_test ;;   # 对于选项 5，调用 run_streaming_test 函数
-        6) install_bt6 ;;   # 对于选项 6，调用 install_bt6 函数
-        7) install_speedtest ;;   # 对于选项 7，调用 install_speedtest 函数
-        8) install_yeah ;;   # 对于选项 8，调用 install_yeah 函数
-        9) install_dd_alpine ;;   # 对于选项 9，调用 install_dd_alpine 函数
-        10) install_alpine_xrayr ;;   # 对于选项 10，调用 install_alpine_xrayr 函数
-		11) add_swap_partition ;;   # 对于选项 11，调用 add_swap_partition 函数
-		12) check_update ;;  # 对于选项 12，调用 check_update 函数
-		13) download_and_run_cloudflare_ddns ;;   # 对于选项 13，调用 download_and_run_cloudflare_ddns 函数
-        *) echo -e "\e[33m退出脚本,请输入有效选择...\e[39m"; exit ;;   # 对于无效选择，退出脚本
+        1)
+            # 显示network tools 的二级菜单
+            while true; do
+                display_network_tools_menu
+                read -p "请选择一个选项：" tools_choice
+                case $tools_choice in
+                    1) xrayr ;;  # 调用 XrayR 函数
+                    2) warp ;;  # 调用 Warp 函数
+                    3) speedtest ;;  # 调用 Speedtest 函数
+                    4) yeah ;;  # 调用 Yeah 函数
+					5) nxtrace ;; #调用 nxtrace 函数
+					6) realm ;; #调用 realm 函数
+					7) ddns ;; #调用 ddns 函数
+                    0) break ;;  # 返回上一层菜单
+                    *) echo "无效选项。" ;;  # 输入无效选项的提示
+                esac
+            done
+            ;;
+        2)
+            # 显示运行run test的二级菜单
+            while true; do
+                display_run_tests_menu
+                read -p "请选择一个选项：" tests_choice
+                case $tests_choice in
+                    1) fusion ;;  # 调用 fusion 函数
+                    2) streaming ;;  # 调用 streaming 函数
+					3) ipcheck ;;  # 调用 ipcheck 函数
+                    0) break ;;  # 返回上一层菜单
+                    *) echo "无效选项。" ;;  # 输入无效选项的提示
+                esac
+            done
+            ;;
+        3)
+            # 显示other的二级菜单
+            while true; do
+                display_other_menu
+                read -p "请选择一个选项：" other_choice
+                case $other_choice in
+                    1) swap ;;  # 调用 Swap 函数
+					2) bt ;;  # 调用 bt 函数
+					3) docker ;;  # 调用 docker 函数
+					4) python ;; #调用 python 函数
+                    0) break ;;  # 返回上一层菜单
+                    *) echo "无效选项。" ;;  # 输入无效选项的提示
+                esac
+            done
+            ;;
+        4) update ;;  # 调用 update 函数
+        0) uninstall_script ;;  # 调用 uninstall_script 函数
+        *) echo "无效选项，请重新选择。" ;;  # 输入无效选项的提示
     esac
-done  
+done
