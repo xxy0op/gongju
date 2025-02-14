@@ -29,7 +29,7 @@ echo -e "${plain}"
 
 
 # 版本号
-VERSION="2.0"
+VERSION="3.0"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -266,7 +266,7 @@ URL=https://www.aapanel.com/script/install_7.0_en.sh && if [ -f /usr/bin/curl ];
 }
 
 #安装 docker
-docker_install() {
+docker() {
     curl -fsSL https://get.docker.com -o get-docker.sh
     sh get-docker.sh
     rm get-docker.sh
