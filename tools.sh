@@ -29,7 +29,7 @@ echo -e "${plain}"
 
 
 # 版本号
-VERSION="3.0"
+VERSION="1.0"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -190,7 +190,7 @@ nxtrace() {
 
 #安装relam脚本
 realm() {
-    bash <(curl -sL download.755955.xyz/realm/install.sh)
+    bash <(curl -sL download.tapby.de/realm/install.sh)
 }
 
 # 安装DDNS脚本
