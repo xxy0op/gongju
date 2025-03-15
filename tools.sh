@@ -29,7 +29,7 @@ echo -e "${plain}"
 
 
 # 版本号
-VERSION="1.0"
+VERSION="2.0"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -125,40 +125,160 @@ speedtest() {
 }
 
 # 安装Yeah脚本
-yeah() {
-    echo "正在安装 yeah 脚本..."
+# 优化网络性能函数 - 专为SS节点优化
+network_optimize() {
+    echo "========== SS节点网络性能优化 =========="
+    
+    # 计算系统内存相关参数
+    # 获取系统总内存(KB)
+    total_mem=$(cat /proc/meminfo | grep MemTotal | awk '{print $2}')
+    # 计算TCP内存参数 (基于总内存)
+    t_size=$((total_mem * 1024))
+    t_min=$(printf '%d' $(($t_size / 4096 / 4 * 1)))
+    t_avg=$(printf '%d' $(($t_size / 4096 / 4 * 2)))
+    t_max=$(printf '%d' $(($t_size / 4096 / 4 * 3)))
+    
+    # 计算保留内存
+    reserve_mem=$(($total_mem / 16))
+    reserve_min_bytes=$(($reserve_mem * 4))
+    
+    echo "系统总内存: $total_mem KB"
+    echo "TCP内存参数: $t_min $t_avg $t_max"
+    
+    # 选择拥塞控制算法
+    echo "请选择TCP拥塞控制算法:"
+    echo "1. BBR (推荐, 适合大多数场景)"
+    echo "2. YEAH (可能在某些特定网络环境有优势)"
+    read -p "请选择 [1]: " algo_choice
+    algo_choice=${algo_choice:-1}
+    
+    if [[ "$algo_choice" == "2" ]]; then
+        CC_ALGO="yeah"
+        echo "已选择 YEAH 算法"
+    else
+        CC_ALGO="bbr"
+        echo "已选择 BBR 算法"
+    fi
+    
+    # 选择优化级别
+    echo "请选择优化级别:"
+    echo "1. 基础优化 (适合小内存VPS, <1GB)"
+    echo "2. 标准优化 (适合大多数情况, 1-4GB内存)"
+    echo "3. 极致优化 (适合4GB以上内存)"
+    read -p "请选择 [2]: " opt_level
+    opt_level=${opt_level:-2}
+    
+    case $opt_level in
+        1)
+            echo "应用基础优化参数..."
+            # 小内存VPS的参数
+            rmem_max="8388608"    # 8MB
+            wmem_max="8388608"    # 8MB
+            backlog="8192"
+            ;;
+        3)
+            echo "应用极致优化参数..."
+            # 大内存服务器的参数
+            rmem_max="67108864"   # 64MB
+            wmem_max="67108864"   # 64MB
+            backlog="1048576"
+            ;;
+        *)
+            echo "应用标准优化参数..."
+            # 标准参数
+            rmem_max="33554432"   # 32MB
+            wmem_max="33554432"   # 32MB
+            backlog="262144"
+            ;;
+    esac
+    
     # 准备sysctl参数
     declare -A params=(
-        ["net.ipv4.ip_forward"]="1"
-        ["net.ipv4.tcp_window_scaling"]="1"
-        ["net.ipv4.tcp_adv_win_scale"]="-1"
-        ["net.ipv4.tcp_timestamps"]="1"
-        ["net.ipv4.tcp_no_metrics_save"]="1"
-        ["net.ipv4.conf.default.rp_filter"]="1"
-        ["net.ipv4.conf.all.rp_filter"]="1"
-        ["net.ipv4.conf.default.accept_source_route"]="0"
-        ["net.ipv4.tcp_rmem"]="8192 87380 33554432"
-        ["net.ipv4.tcp_wmem"]="4096 16384 33554432"
-        ["net.ipv4.udp_rmem_min"]="4096"
-        ["net.ipv4.udp_wmem_min"]="4096"
+        # TCP拥塞控制
+        ["net.ipv4.tcp_congestion_control"]="${CC_ALGO}"
         ["net.core.default_qdisc"]="fq"
-        ["net.ipv4.tcp_congestion_control"]="yeah"
+        
+        # 基本网络配置
+        ["net.ipv4.ip_forward"]="1"
+        ["net.ipv4.tcp_fastopen"]="3"
+        ["net.ipv4.tcp_mtu_probing"]="1"
+        ["net.ipv4.tcp_slow_start_after_idle"]="0"
+        
+        # TCP窗口优化
+        ["net.ipv4.tcp_window_scaling"]="1"
+        ["net.ipv4.tcp_adv_win_scale"]="-2"
+        ["net.ipv4.tcp_timestamps"]="1"
+        ["net.ipv4.tcp_sack"]="1"
+        ["net.ipv4.tcp_dsack"]="1"
+        ["net.ipv4.tcp_fack"]="1"
+        ["net.ipv4.tcp_no_metrics_save"]="1"
+        
+        # 内存优化
+        ["net.ipv4.tcp_rmem"]="4096 87380 ${rmem_max}"
+        ["net.ipv4.tcp_wmem"]="4096 65536 ${wmem_max}"
+        ["net.core.rmem_max"]="${rmem_max}"
+        ["net.core.wmem_max"]="${wmem_max}"
+        ["net.core.rmem_default"]="1048576"
+        ["net.core.wmem_default"]="1048576"
+        ["net.ipv4.udp_rmem_min"]="8192"
+        ["net.ipv4.udp_wmem_min"]="8192"
+        ["net.ipv4.tcp_mem"]="${t_min} ${t_avg} ${t_max}"
+        ["net.ipv4.udp_mem"]="${t_min} ${t_avg} ${t_max}"
+        
+        # 连接优化
+        ["net.core.somaxconn"]="65535"
+        ["net.ipv4.tcp_max_syn_backlog"]="${backlog}"
+        ["net.core.netdev_max_backlog"]="${backlog}"
+        ["net.ipv4.tcp_max_tw_buckets"]="65535"
+        ["net.ipv4.ip_local_port_range"]="1024 65535"
+        
+        # 安全参数
+        ["net.ipv4.tcp_syncookies"]="1"
+        ["net.ipv4.conf.all.rp_filter"]="1"
+        ["net.ipv4.conf.default.rp_filter"]="1"
+        ["net.ipv4.conf.all.accept_source_route"]="0"
+        ["net.ipv4.conf.default.accept_source_route"]="0"
+        ["net.ipv4.conf.all.accept_redirects"]="0"
+        ["net.ipv4.conf.default.accept_redirects"]="0"
+        
+        # 系统资源优化
         ["kernel.pid_max"]="4194304"
-        ["fs.file-max"]="2097152"
+        ["fs.file-max"]="1048576"
         ["fs.protected_hardlinks"]="1"
         ["fs.protected_symlinks"]="1"
-        ["vm.compaction_proactiveness"]="0"
-        ["vm.extfrag_threshold"]="1000"
-        ["kernel.core_uses_pid"]="1"
-		["net.ipv6.conf.all.disable_ipv6"]="1"
-		["net.ipv6.conf.default.disable_ipv6"]="1"
-		["net.ipv6.conf.lo.disable_ipv6"]="1"
+        
+        # IPv6相关
+        ["net.ipv6.conf.all.disable_ipv6"]="0"
+        ["net.ipv6.conf.default.disable_ipv6"]="0"
+        ["net.ipv6.conf.lo.disable_ipv6"]="0"
+        
+        # 延迟优化
+        ["net.ipv4.tcp_keepalive_time"]="600"
+        ["net.ipv4.tcp_keepalive_intvl"]="30"
+        ["net.ipv4.tcp_keepalive_probes"]="10"
+        ["net.ipv4.tcp_fin_timeout"]="30"
+        
+        # 虚拟内存
+        ["vm.swappiness"]="10"
+        ["vm.min_free_kbytes"]="${reserve_min_bytes}"
     )
-
-    # 应用 sysctl 参数
-    echo "Applying sysctl parameters..."
+    
+    # 备份原始配置
+    if [ ! -f "/etc/sysctl.conf.bak" ]; then
+        echo "备份原始sysctl配置..."
+        cp /etc/sysctl.conf /etc/sysctl.conf.bak
+    fi
+    
+    # 应用sysctl参数
+    echo "正在应用网络优化参数..."
+    
+    # 创建新的sysctl-ss.conf文件
+    echo "# SS节点网络优化配置 - $(date)" > /etc/sysctl.d/99-ss-optimize.conf
+    
     for param in "${!params[@]}"; do
         value=${params[$param]}
+        echo "$param = $value" >> /etc/sysctl.d/99-ss-optimize.conf
+        # 也更新主sysctl.conf文件
         if grep -q "^$param" /etc/sysctl.conf; then
             # 如果存在，则使用sed命令更新其值
             sed -i "s/^$param.*/$param = $value/" /etc/sysctl.conf
@@ -167,17 +287,43 @@ yeah() {
             echo "$param = $value" >> /etc/sysctl.conf
         fi
     done
-
-    # 应用所有 sysctl 参数
+    
+    # 设置文件描述符限制
+    if ! grep -q "nofile" /etc/security/limits.conf; then
+        echo "设置文件描述符限制..."
+        cat >> /etc/security/limits.conf << EOF
+* soft nofile 1048576
+* hard nofile 1048576
+root soft nofile 1048576
+root hard nofile 1048576
+* soft nproc 1048576
+* hard nproc 1048576
+EOF
+    fi
+    
+    # 应用所有sysctl参数
+    echo "正在应用所有网络参数..."
     sysctl --system
-
+    
+    if [ $? -eq 0 ]; then
+        echo -e "\033[32m✓ 网络优化参数应用成功!\033[0m"
+        echo "当前拥塞控制算法: $(sysctl -n net.ipv4.tcp_congestion_control)"
+        echo "当前队列算法: $(sysctl -n net.core.default_qdisc)"
+        echo "TCP Fast Open: $(sysctl -n net.ipv4.tcp_fastopen)"
+    else
+        echo -e "\033[31m× 部分参数应用失败，请检查日志\033[0m"
+    fi
+    
     # 询问是否需要重启
-    read -p "安装完成，是否需要重启服务器？[Y/n]" restart_response
+    echo
+    echo "注意: 某些参数可能需要重启服务器才能完全生效"
+    read -p "是否现在重启服务器? [y/N]: " restart_response
     if [[ "$restart_response" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
-        echo "正在重启服务器..."
+        echo "服务器将在3秒后重启..."
+        sleep 3
         reboot
     else
-        echo "未选择重启服务器，脚本将继续运行。"
+        echo "跳过重启。您可以稍后手动重启服务器以确保所有参数生效。"
     fi
 }
 
@@ -316,7 +462,7 @@ display_network_tools_menu() {
     echo "1. install XrayR"
     echo "2. install Warp"
     echo "3. install Speedtest"
-    echo "4. install Yeah-bbr"
+    echo "4. install network_optimize"
 	echo "5. install Nxtrace"
 	echo "6. install Realm"
 	echo "7. install ddns"
@@ -354,7 +500,7 @@ while true; do
                     1) xrayr ;;  # 调用 XrayR 函数
                     2) warp ;;  # 调用 Warp 函数
                     3) speedtest ;;  # 调用 Speedtest 函数
-                    4) yeah ;;  # 调用 Yeah 函数
+                    4) network_optimize ;;  # 调用 network_optimize 函数
 					5) nxtrace ;; #调用 nxtrace 函数
 					6) realm ;; #调用 realm 函数
 					7) ddns ;; #调用 ddns 函数
