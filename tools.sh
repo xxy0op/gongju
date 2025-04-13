@@ -29,7 +29,7 @@ echo -e "${plain}"
 
 
 # 版本号
-VERSION="2.0"
+VERSION="1.0"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -124,7 +124,6 @@ speedtest() {
     sudo apt-get install -y speedtest
 }
 
-# 安装Yeah脚本
 # 优化网络性能函数 - 专为SS节点优化
 network_optimize() {
     echo "========== SS节点网络性能优化 =========="
@@ -350,23 +349,11 @@ ddns() {
     /root/cloudflareddns.sh
 }
 
-# 运行融合怪脚本
-fusion() {
-    echo "运行融合怪测评脚本..."
-    # 下载并执行融合怪测评脚本
-    bash <(wget -qO- --no-check-certificate https://gitlab.com/spiritysdx/za/-/raw/main/ecs.sh)
-}
-
-# 运行 流媒体测试 脚本
-streaming() {
-    echo "运行流媒体测试脚本..."
-    # 执行流媒体测试脚本
-    bash <(curl -L -s media.ispvps.com)
-}
-
-#运行ip check脚本
-ipcheck() {
-    bash <(curl -sL IP.Check.Place)
+# 运行NodeQuality脚本
+NodeQuality() {
+    echo "运行NodeQuality测试脚本..."
+    # 下载并执行NodeQuality测试脚本
+    bash <(curl -sL https://run.NodeQuality.com)
 }
 
 # 添加swap分区函数
@@ -471,9 +458,7 @@ display_network_tools_menu() {
 
 # 显示Run tests的二级菜单
 display_run_tests_menu() {
-    echo "1. Run Fusion"
-    echo "2. Run streaming"
-	echo "3. Run ipcheck"
+    echo "1. Run NodeQuality"
     echo "0. 返回"
 }
 
@@ -515,9 +500,7 @@ while true; do
                 display_run_tests_menu
                 read -p "请选择一个选项：" tests_choice
                 case $tests_choice in
-                    1) fusion ;;  # 调用 fusion 函数
-                    2) streaming ;;  # 调用 streaming 函数
-					3) ipcheck ;;  # 调用 ipcheck 函数
+                    1) NodeQuality ;;  # 调用 NodeQuality 函数
                     0) break ;;  # 返回上一层菜单
                     *) echo "无效选项。" ;;  # 输入无效选项的提示
                 esac
