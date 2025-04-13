@@ -124,9 +124,14 @@ speedtest() {
     sudo apt-get install -y speedtest
 }
 
-# 优化网络性能函数 - 专为SS节点优化
 network_optimize() {
-    echo "========== SS节点网络性能优化 =========="
+    echo "========== SS节点网络性能与稳定性优化 =========="
+    
+    # 检查root权限
+    if [[ $EUID -ne 0 ]]; then
+        echo -e "\033[31m错误: 此脚本需要root权限执行\033[0m"
+        return 1
+    fi
     
     # 计算系统内存相关参数
     # 获取系统总内存(KB)
@@ -157,6 +162,64 @@ network_optimize() {
     else
         CC_ALGO="bbr"
         echo "已选择 BBR 算法"
+    fi
+    
+    # 设置队列调度为FQ
+    QDISC="fq"
+    echo "使用 FQ 队列调度算法"
+    
+    # 测试网络抖动
+    test_network_jitter() {
+        echo "测试网络抖动..."
+        targets=("1.1.1.1" "8.8.8.8" "9.9.9.9")
+        jitter_sum=0
+        jitter_count=0
+        
+        for target in "${targets[@]}"; do
+            echo -n "正在测试到 $target 的连接稳定性... "
+            if ping -c 3 -W 1 $target &>/dev/null; then
+                # 收集10次ping结果
+                ping_results=$(ping -c 10 -i 0.2 $target | grep "time=" | awk -F "time=" '{print $2}' | cut -d ' ' -f 1)
+                count=$(echo "$ping_results" | wc -l)
+                
+                if [ $count -gt 5 ]; then
+                    # 计算简单的统计数据
+                    avg=$(echo "$ping_results" | awk '{sum+=$1} END {print sum/NR}')
+                    min=$(echo "$ping_results" | sort -n | head -1)
+                    max=$(echo "$ping_results" | sort -n | tail -1)
+                    jitter=$(echo "$max - $min" | bc)
+                    
+                    echo "延迟: $min-$max ms, 平均: $avg ms, 抖动: $jitter ms"
+                    jitter_sum=$(echo "$jitter_sum + $jitter" | bc)
+                    jitter_count=$((jitter_count + 1))
+                else
+                    echo "测试失败，数据包丢失过多"
+                fi
+            else
+                echo "无法连接"
+            fi
+        done
+        
+        if [ $jitter_count -gt 0 ]; then
+            avg_jitter=$(echo "scale=2; $jitter_sum / $jitter_count" | bc)
+            echo "平均网络抖动: $avg_jitter ms"
+            
+            # 返回抖动值用于后续判断
+            echo $avg_jitter
+        else
+            echo "无法测量网络抖动"
+            echo "0"
+        fi
+    }
+    
+    # 执行抖动测试
+    jitter_value=$(test_network_jitter)
+    high_jitter=false
+    
+    # 根据抖动值决定优化策略
+    if (( $(echo "$jitter_value > 50" | bc -l) )); then
+        echo -e "\033[33m检测到较高的网络抖动 ($jitter_value ms)，将应用更激进的抗抖动参数\033[0m"
+        high_jitter=true
     fi
     
     # 选择优化级别
@@ -195,7 +258,7 @@ network_optimize() {
     declare -A params=(
         # TCP拥塞控制
         ["net.ipv4.tcp_congestion_control"]="${CC_ALGO}"
-        ["net.core.default_qdisc"]="fq"
+        ["net.core.default_qdisc"]="${QDISC}"
         
         # 基本网络配置
         ["net.ipv4.ip_forward"]="1"
@@ -260,13 +323,42 @@ network_optimize() {
         # 虚拟内存
         ["vm.swappiness"]="10"
         ["vm.min_free_kbytes"]="${reserve_min_bytes}"
+        
+        # ===== 新增稳定性优化参数 =====
+        
+        # 抗抖动参数
+        ["net.ipv4.tcp_moderate_rcvbuf"]="1"         # 启用动态接收缓冲区
+        ["net.ipv4.tcp_reordering"]="5"              # 允许的包乱序数量
+        ["net.ipv4.tcp_retries2"]="8"                # 放弃连接前的重试次数
+        ["net.core.busy_read"]="50"                  # 读取操作的轮询时间(微秒)
+        ["net.core.busy_poll"]="50"                  # 套接字轮询时间(微秒)
+        ["net.ipv4.tcp_rfc1337"]="1"                 # 防止TIME_WAIT暗杀
+        
+        # 流控参数
+        ["net.ipv4.tcp_notsent_lowat"]="16384"       # 限制发送队列大小，减少缓冲区膨胀
+        ["net.ipv4.tcp_frto"]="1"                    # 启用F-RTO，改进重传
+        ["net.ipv4.tcp_early_retrans"]="1"           # 启用早期重传
+        ["net.ipv4.tcp_thin_dupack"]="1"             # 针对小数据流的重复确认处理
     )
     
-    # 备份原始配置
-    if [ ! -f "/etc/sysctl.conf.bak" ]; then
-        echo "备份原始sysctl配置..."
-        cp /etc/sysctl.conf /etc/sysctl.conf.bak
+    # 根据网络抖动测试结果调整参数
+    if $high_jitter; then
+        echo "正在应用抗抖动增强参数..."
+        
+        # 更激进的抗抖动参数
+        params["net.ipv4.tcp_rmem"]="4096 524288 ${rmem_max}"  # 更大的初始接收窗口
+        params["net.core.busy_poll"]="100"]                    # 增加轮询时间
+        params["net.core.busy_read"]="100"]                    # 增加读取轮询时间
+        params["net.core.netdev_budget"]="600"]                # 增加每次网络轮询处理的数据包数量
+        params["net.ipv4.tcp_mtu_probing"]="2"]                # 更积极的MTU探测
+        params["net.ipv4.tcp_retries2"]="12"]                  # 增加重试次数
+        params["net.ipv4.tcp_rto_min"]="200"]                  # 控制最小重传超时时间(毫秒)
     fi
+    
+    # 备份原始配置
+    backup_file="/etc/sysctl.conf.bak.$(date +%Y%m%d%H%M%S)"
+    echo "备份原始sysctl配置到 $backup_file..."
+    cp /etc/sysctl.conf $backup_file
     
     # 应用sysctl参数
     echo "正在应用网络优化参数..."
@@ -304,25 +396,31 @@ EOF
     echo "正在应用所有网络参数..."
     sysctl --system
     
+    # 验证应用结果
     if [ $? -eq 0 ]; then
         echo -e "\033[32m✓ 网络优化参数应用成功!\033[0m"
         echo "当前拥塞控制算法: $(sysctl -n net.ipv4.tcp_congestion_control)"
         echo "当前队列算法: $(sysctl -n net.core.default_qdisc)"
         echo "TCP Fast Open: $(sysctl -n net.ipv4.tcp_fastopen)"
+        
+        # 对比优化前后
+        echo "优化前网络抖动: $jitter_value ms"
+        echo "建议重启后再次测试网络抖动以验证优化效果"
     else
         echo -e "\033[31m× 部分参数应用失败，请检查日志\033[0m"
     fi
     
     # 询问是否需要重启
     echo
-    echo "注意: 某些参数可能需要重启服务器才能完全生效"
+    echo "注意: 某些参数需要重启服务器才能完全生效"
     read -p "是否现在重启服务器? [y/N]: " restart_response
     if [[ "$restart_response" =~ ^([yY][eE][sS]|[yY])+$ ]]; then
         echo "服务器将在3秒后重启..."
         sleep 3
         reboot
     else
-        echo "跳过重启。您可以稍后手动重启服务器以确保所有参数生效。"
+        echo "跳过重启。为确保所有稳定性参数生效，建议您在方便时手动重启服务器。"
+        echo "重启后，可以再次运行此脚本中的test_network_jitter函数来测试优化效果。"
     fi
 }
 
