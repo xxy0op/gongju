@@ -29,7 +29,7 @@ echo -e "${plain}"
 
 
 # 版本号
-VERSION="1.0"
+VERSION="2.0"
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -429,6 +429,55 @@ python() {
     pipx ensurepath
 }
 
+#安装ufw-docker
+add_ufw_docker_rules() {
+    echo "正在将 UFW Docker 规则添加到 /etc/ufw/after.rules 文件底部..."
+
+    ufw_rules_file="/etc/ufw/after.rules"
+
+    # 定义要添加的规则内容
+    read -r -d '' RULES << 'EOF'
+# BEGIN UFW AND DOCKER
+*filter
+:ufw-user-forward - [0:0]
+:ufw-docker-logging-deny - [0:0]
+:DOCKER-USER - [0:0]
+-A DOCKER-USER -j ufw-user-forward
+
+-A DOCKER-USER -j RETURN -s 10.0.0.0/8
+-A DOCKER-USER -j RETURN -s 172.16.0.0/12
+-A DOCKER-USER -j RETURN -s 192.168.0.0/16
+
+-A DOCKER-USER -p udp -m udp --sport 53 --dport 1024:65535 -j RETURN
+
+-A DOCKER-USER -j ufw-docker-logging-deny -p tcp -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -d 192.168.0.0/16
+-A DOCKER-USER -j ufw-docker-logging-deny -p tcp -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -d 10.0.0.0/8
+-A DOCKER-USER -j ufw-docker-logging-deny -p tcp -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -d 172.16.0.0/12
+-A DOCKER-USER -j ufw-docker-logging-deny -p udp -m udp --dport 0:32767 -d 192.168.0.0/16
+-A DOCKER-USER -j ufw-docker-logging-deny -p udp -m udp --dport 0:32767 -d 10.0.0.0/8
+-A DOCKER-USER -j ufw-docker-logging-deny -p udp -m udp --dport 0:32767 -d 172.16.0.0/12
+
+-A DOCKER-USER -j RETURN
+
+-A ufw-docker-logging-deny -m limit --limit 3/min --limit-burst 10 -j LOG --log-prefix "[UFW DOCKER BLOCK] "
+-A ufw-docker-logging-deny -j DROP
+
+COMMIT
+# END UFW AND DOCKER
+EOF
+
+    # 检查是否已添加过
+    if grep -q "# BEGIN UFW AND DOCKER" "$ufw_rules_file"; then
+        echo "UFW Docker 配置已存在，跳过添加。"
+    else
+        echo "$RULES" | sudo tee -a "$ufw_rules_file" > /dev/null
+        echo "已成功添加规则，正在重启 UFW 服务..."
+        sudo systemctl restart ufw
+        echo "UFW 服务已重启完成。"
+    fi
+}
+
+
 # 显示主菜单的函数
 display_menu() {
     # 显示当前版本号
@@ -468,6 +517,7 @@ display_other_menu() {
 	echo "2. install bt panel"
 	echo "3. install docker"
 	echo "4. install python"
+	echo "5. install ufw-docker"
     echo "0. 返回"
 }
 
@@ -516,6 +566,7 @@ while true; do
 					2) bt ;;  # 调用 bt 函数
 					3) docker ;;  # 调用 docker 函数
 					4) python ;; #调用 python 函数
+					5) add_ufw_docker_rules ;;#调用 add_ufw_docker_rules 函数
                     0) break ;;  # 返回上一层菜单
                     *) echo "无效选项。" ;;  # 输入无效选项的提示
                 esac
