@@ -29,7 +29,7 @@ echo -e "${plain}"
 
 
 # 版本号
-VERSION="3.0"	
+VERSION="1.0"	
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -477,6 +477,67 @@ EOF
     fi
 }
 
+# 带宽限速功能
+bandwidth_limit() {
+    IFACE="eth0"
+    IFB_DEV="ifb0"
+
+    while true; do
+        echo "===== 带宽限速功能 ====="
+        echo "1. 启用限速"
+        echo "2. 取消限速"
+        echo "0. 返回"
+        read -p "请选择一个选项：" limit_choice
+        case $limit_choice in
+            1)
+                read -p "请输入限速带宽（单位 Mbps，例如 200）: " RATE
+                RATE="${RATE}mbit"
+
+                echo ">> 正在配置限速，限速值: $RATE"
+
+                # 加载 ifb 模块
+                modprobe ifb numifbs=1
+
+                # 启动 ifb 设备
+                ip link set dev $IFB_DEV up 2>/dev/null || ip link add $IFB_DEV type ifb && ip link set $IFB_DEV up
+
+                # 清除原有规则
+                tc qdisc del dev $IFACE root 2>/dev/null
+                tc qdisc del dev $IFACE ingress 2>/dev/null
+                tc qdisc del dev $IFB_DEV root 2>/dev/null
+
+                # 上行限速
+                tc qdisc add dev $IFACE root handle 1: htb default 11
+                tc class add dev $IFACE parent 1: classid 1:11 htb rate $RATE ceil $RATE burst 4mb
+                tc filter add dev $IFACE protocol ip parent 1:0 prio 1 u32 match ip src 0.0.0.0/0 flowid 1:11
+
+                # 下行限速
+                tc qdisc add dev $IFACE handle ffff: ingress
+                tc filter add dev $IFACE parent ffff: protocol ip u32 match u32 0 0 action mirred egress redirect dev $IFB_DEV
+                tc qdisc add dev $IFB_DEV root handle 2: htb default 22
+                tc class add dev $IFB_DEV parent 2: classid 2:22 htb rate $RATE ceil $RATE burst 4mb
+
+                echo ">> 限速配置完成，当前上下行限速 $RATE"
+                ;;
+            2)
+                echo ">> 正在取消限速..."
+                tc qdisc del dev $IFACE root 2>/dev/null
+                tc qdisc del dev $IFACE ingress 2>/dev/null
+                tc qdisc del dev $IFB_DEV root 2>/dev/null
+                ip link set dev $IFB_DEV down 2>/dev/null
+                echo ">> 限速已取消。"
+                ;;
+            0)
+                break
+                ;;
+            *)
+                echo "无效选项。"
+                ;;
+        esac
+    done
+}
+
+
 
 # 显示主菜单的函数
 display_menu() {
@@ -518,6 +579,7 @@ display_other_menu() {
 	echo "3. install docker"
 	echo "4. install python"
 	echo "5. install ufw-docker"
+	echo "6. Bandwidth Limit"
     echo "0. 返回"
 }
 
@@ -567,6 +629,7 @@ while true; do
 					3) docker ;;  # 调用 docker 函数
 					4) python ;; #调用 python 函数
 					5) add_ufw_docker_rules ;;#调用 add_ufw_docker_rules 函数
+					6) bandwidth_limit ;;#调用 带宽限制 函数
                     0) break ;;  # 返回上一层菜单
                     *) echo "无效选项。" ;;  # 输入无效选项的提示
                 esac
