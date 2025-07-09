@@ -29,7 +29,7 @@ echo -e "${plain}"
 
 
 # 版本号
-VERSION="1.0"	
+VERSION="1.1"	
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -398,26 +398,24 @@ bt() {
 URL=https://www.aapanel.com/script/install_7.0_en.sh && if [ -f /usr/bin/curl ];then curl -ksSO "$URL" ;else wget --no-check-certificate -O install_7.0_en.sh "$URL";fi;bash install_7.0_en.sh aapanel
 }
 
-#安装 docker
+#安装 docker 和 docker compose
 docker() {
-    curl -fsSL https://get.docker.com -o get-docker.sh
-    sh get-docker.sh
-    rm get-docker.sh
-    cleanlog
-    docker_compose_install
-    echo "已安装docker"
-}
-
-docker_compose_install() {
-    local compose_version=$(curl -Ls "https://api.github.com/repos/docker/compose/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    [ -z "${compose_version}" ] && compose_version="v2.30.3"
-	local compose_link=$(echo https://github.com/docker/compose/releases/download/${compose_version}/docker-compose-linux-$(arch))
-    rm /usr/bin/docker-compose -f
-    wget -qO /usr/bin/docker-compose ${compose_link}
-    chmod +x /usr/bin/docker-compose
-    rm /usr/libexec/docker/cli-plugins/docker-compose -f
-    cp /usr/bin/docker-compose /usr/libexec/docker/cli-plugins/docker-compose
-    echo "已安装docker-compose"
+    echo "正在安装 Docker..."
+    curl -fsSL https://get.docker.com | sh
+    echo "正在安装 Docker Compose..."
+    DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
+    mkdir -p $DOCKER_CONFIG/cli-plugins
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        x86_64) ARCH="x86_64" ;;
+        aarch64) ARCH="aarch64" ;;
+        armv7l) ARCH="armv7" ;;
+        *) ARCH="x86_64" ;;
+    esac
+    VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep tag_name | cut -d '"' -f 4)
+    curl -SL https://github.com/docker/compose/releases/download/${VERSION}/docker-compose-linux-${ARCH} -o $DOCKER_CONFIG/cli-plugins/docker-compose
+    chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
+    echo "Docker 和 Docker Compose 安装完成！"
 }
 
 #安装 python
