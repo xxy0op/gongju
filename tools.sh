@@ -137,27 +137,9 @@ network_optimize() {
     t_avg=$(printf '%d' $(($t_size / 4096 / 4 * 2)))
     t_max=$(printf '%d' $(($t_size / 4096 / 4 * 3)))
     
-    # 计算保留内存
-    reserve_mem=$(($total_mem / 16))
-    reserve_min_bytes=$(($reserve_mem * 4))
-    
     echo "系统总内存: $total_mem KB"
     echo "TCP内存参数: $t_min $t_avg $t_max"
-    
-    # 选择拥塞控制算法
-    echo "请选择TCP拥塞控制算法:"
-    echo "1. BBR (推荐, 适合大多数场景)"
-    echo "2. YEAH (可能在某些特定网络环境有优势)"
-    read -p "请选择 [1]: " algo_choice
-    algo_choice=${algo_choice:-1}
-    
-    if [[ "$algo_choice" == "2" ]]; then
-        CC_ALGO="yeah"
-        echo "已选择 YEAH 算法"
-    else
-        CC_ALGO="bbr"
-        echo "已选择 BBR 算法"
-    fi
+    echo "使用BBR拥塞控制算法"
     
     # 选择优化级别
     echo "请选择优化级别:"
@@ -193,8 +175,8 @@ network_optimize() {
     
     # 准备sysctl参数
     declare -A params=(
-        # TCP拥塞控制
-        ["net.ipv4.tcp_congestion_control"]="${CC_ALGO}"
+        # TCP拥塞控制 - 默认BBR
+        ["net.ipv4.tcp_congestion_control"]="bbr"
         ["net.core.default_qdisc"]="fq"
         
         # 基本网络配置
@@ -257,9 +239,9 @@ network_optimize() {
         ["net.ipv4.tcp_keepalive_probes"]="10"
         ["net.ipv4.tcp_fin_timeout"]="30"
         
-        # 虚拟内存
+        # 虚拟内存 - 固定设置为4096
         ["vm.swappiness"]="10"
-        ["vm.min_free_kbytes"]="${reserve_min_bytes}"
+        ["vm.min_free_kbytes"]="4096"
     )
     
     # 备份原始配置
@@ -268,16 +250,12 @@ network_optimize() {
         cp /etc/sysctl.conf /etc/sysctl.conf.bak
     fi
     
-    # 应用sysctl参数
+    # 应用sysctl参数到/etc/sysctl.conf
     echo "正在应用网络优化参数..."
-    
-    # 创建新的sysctl-ss.conf文件
-    echo "# SS节点网络优化配置 - $(date)" > /etc/sysctl.d/99-ss-optimize.conf
     
     for param in "${!params[@]}"; do
         value=${params[$param]}
-        echo "$param = $value" >> /etc/sysctl.d/99-ss-optimize.conf
-        # 也更新主sysctl.conf文件
+        # 更新/etc/sysctl.conf文件
         if grep -q "^$param" /etc/sysctl.conf; then
             # 如果存在，则使用sed命令更新其值
             sed -i "s/^$param.*/$param = $value/" /etc/sysctl.conf
@@ -302,13 +280,14 @@ EOF
     
     # 应用所有sysctl参数
     echo "正在应用所有网络参数..."
-    sysctl --system
+    sysctl -p
     
     if [ $? -eq 0 ]; then
         echo -e "\033[32m✓ 网络优化参数应用成功!\033[0m"
         echo "当前拥塞控制算法: $(sysctl -n net.ipv4.tcp_congestion_control)"
         echo "当前队列算法: $(sysctl -n net.core.default_qdisc)"
         echo "TCP Fast Open: $(sysctl -n net.ipv4.tcp_fastopen)"
+        echo "vm.min_free_kbytes: 4096 (固定值)"
     else
         echo -e "\033[31m× 部分参数应用失败，请检查日志\033[0m"
     fi
@@ -425,6 +404,115 @@ python() {
     apt install python3-venv -y
     apt install pipx -y
     pipx ensurepath
+}
+
+# SSH安全配置功能 - 禁用密码登录，启用密钥登录
+ssh_security() {
+    echo "========== SSH安全配置 =========="
+    echo "此功能将会："
+    echo "1. 禁用SSH密码登录"
+    echo "2. 启用SSH密钥登录"
+    echo ""
+    echo -e "\033[31m警告: 在继续之前，请确保您已经设置了SSH密钥！\033[0m"
+    echo -e "\033[31m如果没有密钥，您可能会失去服务器访问权限！\033[0m"
+    echo ""
+    
+    # 检查是否已存在授权密钥
+    if [ ! -f ~/.ssh/authorized_keys ] || [ ! -s ~/.ssh/authorized_keys ]; then
+        echo -e "\033[33m检测到您还没有设置SSH密钥。\033[0m"
+        read -p "是否现在添加SSH公钥？[Y/n]: " add_key_response
+        add_key_response=${add_key_response:-Y}
+        
+        if [[ "$add_key_response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+            # 创建.ssh目录
+            mkdir -p ~/.ssh
+            chmod 700 ~/.ssh
+            
+            echo "请输入您的SSH公钥内容（通常以ssh-rsa、ssh-ed25519等开头）："
+            read -r ssh_public_key
+            
+            if [ -n "$ssh_public_key" ]; then
+                echo "$ssh_public_key" >> ~/.ssh/authorized_keys
+                chmod 600 ~/.ssh/authorized_keys
+                echo -e "\033[32m✓ SSH公钥已添加到authorized_keys\033[0m"
+            else
+                echo -e "\033[31m× 未输入有效的公钥，操作取消\033[0m"
+                return 1
+            fi
+        else
+            echo -e "\033[31m× 没有SSH密钥的情况下禁用密码登录是危险的，操作取消\033[0m"
+            return 1
+        fi
+    else
+        echo -e "\033[32m✓ 检测到已存在SSH密钥\033[0m"
+    fi
+    
+    # 最终确认
+    echo ""
+    echo "即将进行以下配置："
+    echo "- 禁用密码登录"
+    echo "- 启用公钥认证"
+    echo ""
+    read -p "确认继续？[y/N]: " final_confirm
+    
+    if [[ ! "$final_confirm" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+        echo "操作取消"
+        return 0
+    fi
+    
+    # 备份原始SSH配置
+    if [ ! -f "/etc/ssh/sshd_config.bak" ]; then
+        echo "备份原始SSH配置..."
+        cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+    fi
+    
+    # 应用SSH安全配置
+    echo "正在应用SSH安全配置..."
+    
+    SSH_CONFIG="/etc/ssh/sshd_config"
+    
+    # 禁用密码认证
+    sed -i 's/^#*PasswordAuthentication .*/PasswordAuthentication no/' $SSH_CONFIG
+    if ! grep -q "^PasswordAuthentication" $SSH_CONFIG; then
+        echo "PasswordAuthentication no" >> $SSH_CONFIG
+    fi
+    
+    # 启用公钥认证
+    sed -i 's/^#*PubkeyAuthentication .*/PubkeyAuthentication yes/' $SSH_CONFIG
+    if ! grep -q "^PubkeyAuthentication" $SSH_CONFIG; then
+        echo "PubkeyAuthentication yes" >> $SSH_CONFIG
+    fi
+    
+    # 测试SSH配置
+    echo "测试SSH配置语法..."
+    if sshd -t; then
+        echo -e "\033[32m✓ SSH配置语法正确\033[0m"
+        
+        # 重启SSH服务
+        echo "重启SSH服务..."
+        systemctl restart sshd
+        
+        if systemctl is-active --quiet sshd; then
+            echo -e "\033[32m✓ SSH服务重启成功\033[0m"
+            echo ""
+            echo "========== 配置完成 =========="
+            echo -e "\033[32m✓ SSH密码登录已禁用\033[0m"
+            echo -e "\033[32m✓ SSH密钥登录已启用\033[0m"
+            echo ""
+            echo -e "\033[31m重要提醒:\033[0m"
+            echo "1. 请不要关闭当前SSH连接"
+            echo "2. 请在新终端中测试SSH密钥登录"
+            echo "3. 确认可以正常登录后再关闭当前会话"
+        else
+            echo -e "\033[31m× SSH服务重启失败\033[0m"
+            echo "恢复原始配置..."
+            cp /etc/ssh/sshd_config.bak /etc/ssh/sshd_config
+            systemctl restart sshd
+        fi
+    else
+        echo -e "\033[31m× SSH配置语法错误，恢复原始配置\033[0m"
+        cp /etc/ssh/sshd_config.bak /etc/ssh/sshd_config
+    fi
 }
 
 #安装ufw-docker
@@ -628,6 +716,7 @@ while true; do
 					4) python ;; #调用 python 函数
 					5) add_ufw_docker_rules ;;#调用 add_ufw_docker_rules 函数
 					6) bandwidth_limit ;;#调用 带宽限制 函数
+					7) ssh_security ;;#调用 SSH安全配置 函数
                     0) break ;;  # 返回上一层菜单
                     *) echo "无效选项。" ;;  # 输入无效选项的提示
                 esac
