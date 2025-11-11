@@ -29,7 +29,7 @@ echo -e "${plain}"
 
 
 # 版本号
-VERSION="1.1"	
+VERSION="1.2"	
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -54,7 +54,7 @@ update() {
     REMOTE_VERSION=$(curl -s https://raw.githubusercontent.com/xxy0op/gongju/master/version.txt)
     if [[ -n "$REMOTE_VERSION" ]]; then  # 检查是否成功获取远程版本号
         if [[ "$REMOTE_VERSION" != "$VERSION" ]]; then
-            echo "发现新版本 $REMOTE_VERSION，是否更新？[Y/n]"
+            echo "发现新版本 $REMOTE_VERSION,是否更新?[Y/n]"
             read -r response
             if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
                 # 下载新版本的脚本
@@ -66,26 +66,26 @@ update() {
                     mv tools.sh.new /usr/local/bin/tools.sh
                     # 添加执行权限
                     chmod +x /usr/local/bin/tools.sh
-                    echo "更新完成，重新运行脚本..."
+                    echo "更新完成,重新运行脚本..."
                     exec "/usr/local/bin/tools.sh" "$@"
                 else
-                    echo "下载新版本失败，无法更新。"
+                    echo "下载新版本失败,无法更新。"
                 fi
             fi
         else 
             echo "已经是最新版本。"
         fi
     else
-        echo "无法获取远程版本信息，检查网络连接或稍后重试。"
+        echo "无法获取远程版本信息,检查网络连接或稍后重试。"
     fi
 }
 
 # 卸载脚本函数
 uninstall_script() {
-    echo "确定要卸载脚本吗？ [默认n]:"
+    echo "确定要卸载脚本吗? [默认n]:"
     read -r uninstall_response
     if [[ "$uninstall_response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-        echo "卸载成功！"
+        echo "卸载成功!"
         # 删除脚本文件
         rm "/usr/local/bin/$SCRIPT_NAME" -f
         echo "脚本文件已成功删除。"
@@ -97,7 +97,7 @@ uninstall_script() {
 
 # 获取当前版本号函数
 get_version() {
-    echo -e "\e[32m当前版本号：$VERSION\e[34m"
+    echo -e "\e[32m当前版本号:$VERSION\e[34m"
 }
 
 # 安装 XrayR 脚本
@@ -257,10 +257,10 @@ network_optimize() {
         value=${params[$param]}
         # 更新/etc/sysctl.conf文件
         if grep -q "^$param" /etc/sysctl.conf; then
-            # 如果存在，则使用sed命令更新其值
+            # 如果存在,则使用sed命令更新其值
             sed -i "s/^$param.*/$param = $value/" /etc/sysctl.conf
         else
-            # 如果不存在，则追加到文件末尾
+            # 如果不存在,则追加到文件末尾
             echo "$param = $value" >> /etc/sysctl.conf
         fi
     done
@@ -289,7 +289,7 @@ EOF
         echo "TCP Fast Open: $(sysctl -n net.ipv4.tcp_fastopen)"
         echo "vm.min_free_kbytes: 4096 (固定值)"
     else
-        echo -e "\033[31m× 部分参数应用失败，请检查日志\033[0m"
+        echo -e "\033[31m× 部分参数应用失败,请检查日志\033[0m"
     fi
     
     # 询问是否需要重启
@@ -312,7 +312,7 @@ nxtrace() {
     curl nxtrace.org/nt | bash
 }
 
-#安装relam脚本
+#安装realm脚本
 realm() {
     bash <(curl -sL download.tapby.de/realm/install.sh)
 }
@@ -339,13 +339,13 @@ NodeQuality() {
 swap() {
     echo "开始创建swap分区"
 
-    # 获取用户输入的swap分区大小（单位：GB）
-    read -p "请输入要创建的swap分区大小（单位：GB）：" swap_size_gb
+    # 获取用户输入的swap分区大小(单位:GB)
+    read -p "请输入要创建的swap分区大小(单位:GB):" swap_size_gb
     # 将GB转换为MB
     swap_size_mb=$((swap_size_gb * 1024))
     # 检查输入是否为正整数
     if ! [[ $swap_size_gb =~ ^[0-9]+$ ]]; then
-        echo "错误：请输入一个正整数。"
+        echo "错误:请输入一个正整数。"
         return 1
     fi
 
@@ -394,7 +394,7 @@ docker() {
     VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep tag_name | cut -d '"' -f 4)
     curl -SL https://github.com/docker/compose/releases/download/${VERSION}/docker-compose-linux-${ARCH} -o $DOCKER_CONFIG/cli-plugins/docker-compose
     chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
-    echo "Docker 和 Docker Compose 安装完成！"
+    echo "Docker 和 Docker Compose 安装完成!"
 }
 
 #安装 python
@@ -406,21 +406,21 @@ python() {
     pipx ensurepath
 }
 
-# SSH安全配置功能 - 禁用密码登录，启用密钥登录
+# SSH安全配置功能 - 禁用密码登录,启用密钥登录
 ssh_security() {
     echo "========== SSH安全配置 =========="
-    echo "此功能将会："
+    echo "此功能将会:"
     echo "1. 禁用SSH密码登录"
     echo "2. 启用SSH密钥登录"
     echo ""
-    echo -e "\033[31m警告: 在继续之前，请确保您已经设置了SSH密钥！\033[0m"
-    echo -e "\033[31m如果没有密钥，您可能会失去服务器访问权限！\033[0m"
+    echo -e "\033[31m警告: 在继续之前,请确保您已经设置了SSH密钥!\033[0m"
+    echo -e "\033[31m如果没有密钥,您可能会失去服务器访问权限!\033[0m"
     echo ""
     
     # 检查是否已存在授权密钥
     if [ ! -f ~/.ssh/authorized_keys ] || [ ! -s ~/.ssh/authorized_keys ]; then
         echo -e "\033[33m检测到您还没有设置SSH密钥。\033[0m"
-        read -p "是否现在添加SSH公钥？[Y/n]: " add_key_response
+        read -p "是否现在添加SSH公钥?[Y/n]: " add_key_response
         add_key_response=${add_key_response:-Y}
         
         if [[ "$add_key_response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
@@ -428,7 +428,7 @@ ssh_security() {
             mkdir -p ~/.ssh
             chmod 700 ~/.ssh
             
-            echo "请输入您的SSH公钥内容（通常以ssh-rsa、ssh-ed25519等开头）："
+            echo "请输入您的SSH公钥内容(通常以ssh-rsa、ssh-ed25519等开头):"
             read -r ssh_public_key
             
             if [ -n "$ssh_public_key" ]; then
@@ -436,11 +436,11 @@ ssh_security() {
                 chmod 600 ~/.ssh/authorized_keys
                 echo -e "\033[32m✓ SSH公钥已添加到authorized_keys\033[0m"
             else
-                echo -e "\033[31m× 未输入有效的公钥，操作取消\033[0m"
+                echo -e "\033[31m× 未输入有效的公钥,操作取消\033[0m"
                 return 1
             fi
         else
-            echo -e "\033[31m× 没有SSH密钥的情况下禁用密码登录是危险的，操作取消\033[0m"
+            echo -e "\033[31m× 没有SSH密钥的情况下禁用密码登录是危险的,操作取消\033[0m"
             return 1
         fi
     else
@@ -449,11 +449,11 @@ ssh_security() {
     
     # 最终确认
     echo ""
-    echo "即将进行以下配置："
+    echo "即将进行以下配置:"
     echo "- 禁用密码登录"
     echo "- 启用公钥认证"
     echo ""
-    read -p "确认继续？[y/N]: " final_confirm
+    read -p "确认继续?[y/N]: " final_confirm
     
     if [[ ! "$final_confirm" =~ ^([yY][eE][sS]|[yY])$ ]]; then
         echo "操作取消"
@@ -510,7 +510,7 @@ ssh_security() {
             systemctl restart sshd
         fi
     else
-        echo -e "\033[31m× SSH配置语法错误，恢复原始配置\033[0m"
+        echo -e "\033[31m× SSH配置语法错误,恢复原始配置\033[0m"
         cp /etc/ssh/sshd_config.bak /etc/ssh/sshd_config
     fi
 }
@@ -554,10 +554,10 @@ EOF
 
     # 检查是否已添加过
     if grep -q "# BEGIN UFW AND DOCKER" "$ufw_rules_file"; then
-        echo "UFW Docker 配置已存在，跳过添加。"
+        echo "UFW Docker 配置已存在,跳过添加。"
     else
         echo "$RULES" | sudo tee -a "$ufw_rules_file" > /dev/null
-        echo "已成功添加规则，正在重启 UFW 服务..."
+        echo "已成功添加规则,正在重启 UFW 服务..."
         sudo systemctl restart ufw
         echo "UFW 服务已重启完成。"
     fi
@@ -573,13 +573,13 @@ bandwidth_limit() {
         echo "1. 启用限速"
         echo "2. 取消限速"
         echo "0. 返回"
-        read -p "请选择一个选项：" limit_choice
+        read -p "请选择一个选项:" limit_choice
         case $limit_choice in
             1)
-                read -p "请输入限速带宽（单位 Mbps，例如 200）: " RATE
+                read -p "请输入限速带宽(单位Mbps,例如 200): " RATE
                 RATE="${RATE}mbit"
 
-                echo ">> 正在配置限速，限速值: $RATE"
+                echo ">> 正在配置限速,限速值: $RATE"
 
                 # 加载 ifb 模块
                 modprobe ifb numifbs=1
@@ -603,7 +603,7 @@ bandwidth_limit() {
                 tc qdisc add dev $IFB_DEV root handle 2: htb default 22
                 tc class add dev $IFB_DEV parent 2: classid 2:22 htb rate $RATE ceil $RATE burst 4mb
 
-                echo ">> 限速配置完成，当前上下行限速 $RATE"
+                echo ">> 限速配置完成,当前上下行限速 $RATE"
                 ;;
             2)
                 echo ">> 正在取消限速..."
@@ -623,17 +623,379 @@ bandwidth_limit() {
     done
 }
 
-
+# 重装系统功能
+reinstall_os() {
+    echo "========== 系统重装工具 =========="
+    echo -e "\033[33m警告: 重装系统将清除所有数据,请务必备份重要文件!\033[0m"
+    echo ""
+    
+    # 选择下载源
+    echo "请选择下载源:"
+    echo "1. 国际源 (GitHub)"
+    echo "2. 国内源 (Gitee)"
+    echo "0. 返回"
+    read -p "请选择 [1]: " source_choice
+    source_choice=${source_choice:-1}
+    
+    case $source_choice in
+        1)
+            echo "使用国际源下载脚本..."
+            SCRIPT_URL="https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh"
+            ;;
+        2)
+            echo "使用国内源下载脚本..."
+            SCRIPT_URL="https://gitee.com/mb9e8j2/Tools/raw/master/Linux_reinstall/InstallNET.sh"
+            ;;
+        0)
+            return 0
+            ;;
+        *)
+            echo "无效选项,返回主菜单"
+            return 1
+            ;;
+    esac
+    
+    # 下载重装脚本
+    echo "正在下载重装脚本..."
+    wget --no-check-certificate -qO InstallNET.sh "$SCRIPT_URL"
+    
+    if [ ! -f "InstallNET.sh" ]; then
+        echo -e "\033[31m× 脚本下载失败,请检查网络连接\033[0m"
+        return 1
+    fi
+    
+    chmod a+x InstallNET.sh
+    echo -e "\033[32m✓ 脚本下载成功\033[0m"
+    echo ""
+    
+    # 显示系统选择菜单
+    while true; do
+        echo "========== 选择要安装的系统 =========="
+        echo "Linux 系统:"
+        echo "  1. Debian (推荐: 稳定可靠)"
+        echo "  2. Ubuntu"
+        echo "  3. CentOS"
+        echo "  4. AlmaLinux"
+        echo "  5. RockyLinux"
+        echo "  6. Fedora"
+        echo "  7. Kali Linux"
+        echo "  8. Alpine Linux (轻量级)"
+        echo ""
+        echo "Windows 系统:"
+        echo "  9. Windows Server 2022"
+        echo "  10. Windows Server 2019"
+        echo "  11. Windows Server 2016"
+        echo "  12. Windows Server 2012 R2"
+        echo "  13. Windows 11 Pro"
+        echo "  14. Windows 10 Enterprise LTSC"
+        echo ""
+        echo "  0. 返回"
+        echo ""
+        read -p "请选择系统 [1]: " os_choice
+        os_choice=${os_choice:-1}
+        
+        case $os_choice in
+            1)
+                echo ""
+                echo "Debian 版本选择:"
+                echo "1. Debian 12 (最新稳定版,推荐)"
+                echo "2. Debian 11"
+                echo "3. Debian 10"
+                read -p "请选择版本 [1]: " debian_ver
+                debian_ver=${debian_ver:-1}
+                case $debian_ver in
+                    1) OS_CMD="bash InstallNET.sh -debian 12" ;;
+                    2) OS_CMD="bash InstallNET.sh -debian 11" ;;
+                    3) OS_CMD="bash InstallNET.sh -debian 10" ;;
+                    *) echo "无效选项"; continue ;;
+                esac
+                ;;
+            2)
+                echo ""
+                echo "Ubuntu 版本选择:"
+                echo "1. Ubuntu 24.04 LTS (最新)"
+                echo "2. Ubuntu 22.04 LTS"
+                echo "3. Ubuntu 20.04 LTS"
+                read -p "请选择版本 [2]: " ubuntu_ver
+                ubuntu_ver=${ubuntu_ver:-2}
+                case $ubuntu_ver in
+                    1) OS_CMD="bash InstallNET.sh -ubuntu 24.04" ;;
+                    2) OS_CMD="bash InstallNET.sh -ubuntu 22.04" ;;
+                    3) OS_CMD="bash InstallNET.sh -ubuntu 20.04" ;;
+                    *) echo "无效选项"; continue ;;
+                esac
+                ;;
+            3)
+                echo ""
+                echo "CentOS 版本选择:"
+                echo "1. CentOS 9 Stream"
+                echo "2. CentOS 8 Stream"
+                echo "3. CentOS 7"
+                read -p "请选择版本 [1]: " centos_ver
+                centos_ver=${centos_ver:-1}
+                case $centos_ver in
+                    1) OS_CMD="bash InstallNET.sh -centos 9-stream" ;;
+                    2) OS_CMD="bash InstallNET.sh -centos 8-stream" ;;
+                    3) OS_CMD="bash InstallNET.sh -centos 7" ;;
+                    *) echo "无效选项"; continue ;;
+                esac
+                ;;
+            4)
+                echo ""
+                echo "AlmaLinux 版本选择:"
+                echo "1. AlmaLinux 9 (推荐)"
+                echo "2. AlmaLinux 8"
+                read -p "请选择版本 [1]: " alma_ver
+                alma_ver=${alma_ver:-1}
+                case $alma_ver in
+                    1) OS_CMD="bash InstallNET.sh -almalinux 9" ;;
+                    2) OS_CMD="bash InstallNET.sh -almalinux 8" ;;
+                    *) echo "无效选项"; continue ;;
+                esac
+                ;;
+            5)
+                echo ""
+                echo "RockyLinux 版本选择:"
+                echo "1. RockyLinux 9 (推荐)"
+                echo "2. RockyLinux 8"
+                read -p "请选择版本 [1]: " rocky_ver
+                rocky_ver=${rocky_ver:-1}
+                case $rocky_ver in
+                    1) OS_CMD="bash InstallNET.sh -rockylinux 9" ;;
+                    2) OS_CMD="bash InstallNET.sh -rockylinux 8" ;;
+                    *) echo "无效选项"; continue ;;
+                esac
+                ;;
+            6)
+                echo ""
+                echo "Fedora 版本选择:"
+                echo "1. Fedora 39"
+                echo "2. Fedora 38"
+                read -p "请选择版本 [1]: " fedora_ver
+                fedora_ver=${fedora_ver:-1}
+                case $fedora_ver in
+                    1) OS_CMD="bash InstallNET.sh -fedora 39" ;;
+                    2) OS_CMD="bash InstallNET.sh -fedora 38" ;;
+                    *) echo "无效选项"; continue ;;
+                esac
+                ;;
+            7)
+                OS_CMD="bash InstallNET.sh -kali"
+                ;;
+            8)
+                echo ""
+                echo "Alpine Linux 版本选择:"
+                echo "1. Alpine Edge (滚动更新,推荐)"
+                echo "2. Alpine 3.18"
+                echo "3. Alpine 3.17"
+                read -p "请选择版本 [1]: " alpine_ver
+                alpine_ver=${alpine_ver:-1}
+                case $alpine_ver in
+                    1) OS_CMD="bash InstallNET.sh -alpine edge" ;;
+                    2) OS_CMD="bash InstallNET.sh -alpine 3.18" ;;
+                    3) OS_CMD="bash InstallNET.sh -alpine 3.17" ;;
+                    *) echo "无效选项"; continue ;;
+                esac
+                ;;
+            9)
+                OS_CMD="bash InstallNET.sh -windows 2022"
+                ;;
+            10)
+                OS_CMD="bash InstallNET.sh -windows 2019"
+                ;;
+            11)
+                OS_CMD="bash InstallNET.sh -windows 2016"
+                ;;
+            12)
+                OS_CMD="bash InstallNET.sh -windows 2012"
+                ;;
+            13)
+                OS_CMD="bash InstallNET.sh -windows 11"
+                ;;
+            14)
+                OS_CMD="bash InstallNET.sh -windows 10"
+                ;;
+            0)
+                echo "返回主菜单"
+                return 0
+                ;;
+            *)
+                echo "无效选项,请重新选择"
+                continue
+                ;;
+        esac
+        
+        # 配置自定义选项
+        echo ""
+        echo "=========================================="
+        echo "高级配置选项 (可选)"
+        echo "=========================================="
+        
+        # 检查是否为Windows系统
+        IS_WINDOWS=0
+        if [[ "$OS_CMD" == *"-windows"* ]]; then
+            IS_WINDOWS=1
+        fi
+        
+        # 询问是否修改SSH端口 (Windows不支持)
+        if [ $IS_WINDOWS -eq 0 ]; then
+            read -p "是否需要自定义SSH端口? [y/N]: " custom_port
+            if [[ "$custom_port" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+                while true; do
+                    read -p "请输入SSH端口号 (1-65535) [默认22]: " ssh_port
+                    ssh_port=${ssh_port:-22}
+                    if [[ "$ssh_port" =~ ^[0-9]+$ ]] && [ "$ssh_port" -ge 1 ] && [ "$ssh_port" -le 65535 ]; then
+                        OS_CMD="$OS_CMD -port \"$ssh_port\""
+                        echo -e "\033[32m✓ SSH端口已设置为: $ssh_port\033[0m"
+                        break
+                    else
+                        echo -e "\033[31m× 无效的端口号,请输入1-65535之间的数字\033[0m"
+                    fi
+                done
+            else
+                echo "使用默认SSH端口: 22"
+            fi
+        else
+            echo -e "\033[33m注意: Windows系统不支持自定义SSH端口\033[0m"
+        fi
+        
+        # 询问是否修改密码
+        # 检查是否支持密码自定义
+        SUPPORT_PWD=1
+        if [[ "$OS_CMD" == *"-alpine"* ]] || [[ "$OS_CMD" == *"-ubuntu"* ]] || [[ "$OS_CMD" == *"-windows"* ]]; then
+            SUPPORT_PWD=0
+            echo -e "\033[33m注意: 该系统使用DD镜像安装方式,不支持自定义密码\033[0m"
+            if [[ "$OS_CMD" == *"-windows"* ]]; then
+                echo "  Windows系统默认密码: Teddysun.com"
+                echo "  RDP端口: 3389"
+            else
+                echo "  默认密码: LeitboGi0ro"
+            fi
+        else
+            read -p "是否需要自定义登录密码? [y/N]: " custom_pwd
+            if [[ "$custom_pwd" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+                while true; do
+                    read -s -p "请输入新密码: " new_password
+                    echo ""
+                    if [ -z "$new_password" ]; then
+                        echo -e "\033[31m× 密码不能为空\033[0m"
+                        continue
+                    fi
+                    # 检查密码中是否包含单引号
+                    if [[ "$new_password" == *"'"* ]]; then
+                        echo -e "\033[33m警告: 密码中包含单引号,将自动转义处理\033[0m"
+                    fi
+                    read -s -p "请再次输入密码确认: " new_password_confirm
+                    echo ""
+                    if [ "$new_password" = "$new_password_confirm" ]; then
+                        # 转义密码中的单引号
+                        escaped_password="${new_password//\'/\'\\\'\'}"
+                        OS_CMD="$OS_CMD -pwd '$escaped_password'"
+                        echo -e "\033[32m✓ 自定义密码已设置\033[0m"
+                        break
+                    else
+                        echo -e "\033[31m× 两次输入的密码不一致,请重新输入\033[0m"
+                    fi
+                done
+            else
+                echo "使用默认密码: LeitboGi0ro"
+            fi
+        fi
+        
+        # 确认是否继续
+        echo ""
+        echo "=========================================="
+        echo "最终配置信息:"
+        echo "=========================================="
+        
+        # 显示系统信息
+        if [[ "$OS_CMD" == *"-debian"* ]]; then
+            echo "系统: Debian"
+        elif [[ "$OS_CMD" == *"-ubuntu"* ]]; then
+            echo "系统: Ubuntu (DD镜像安装)"
+        elif [[ "$OS_CMD" == *"-centos"* ]]; then
+            echo "系统: CentOS"
+        elif [[ "$OS_CMD" == *"-almalinux"* ]]; then
+            echo "系统: AlmaLinux"
+        elif [[ "$OS_CMD" == *"-rockylinux"* ]]; then
+            echo "系统: RockyLinux"
+        elif [[ "$OS_CMD" == *"-fedora"* ]]; then
+            echo "系统: Fedora"
+        elif [[ "$OS_CMD" == *"-kali"* ]]; then
+            echo "系统: Kali Linux"
+        elif [[ "$OS_CMD" == *"-alpine"* ]]; then
+            echo "系统: Alpine Linux (DD镜像安装)"
+        elif [[ "$OS_CMD" == *"-windows"* ]]; then
+            echo "系统: Windows (DD镜像安装)"
+        fi
+        
+        # 显示端口信息
+        if [ $IS_WINDOWS -eq 0 ]; then
+            if [[ "$custom_port" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+                echo "SSH端口: $ssh_port (自定义)"
+            else
+                echo "SSH端口: 22 (默认)"
+            fi
+        else
+            echo "RDP端口: 3389 (默认)"
+        fi
+        
+        # 显示密码信息
+        if [ $SUPPORT_PWD -eq 1 ]; then
+            if [[ "$custom_pwd" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+                echo "登录密码: ******** (自定义)"
+            else
+                echo "登录密码: LeitboGi0ro (默认)"
+            fi
+        else
+            if [[ "$OS_CMD" == *"-windows"* ]]; then
+                echo "登录密码: Teddysun.com (默认,无法自定义)"
+                echo "登录用户: Administrator"
+            else
+                echo "登录密码: LeitboGi0ro (默认,无法自定义)"
+                echo "登录用户: root"
+            fi
+        fi
+        
+        echo ""
+        echo "=========================================="
+        echo -e "\033[33m即将执行命令:\033[0m"
+        echo -e "\033[36m$OS_CMD\033[0m"
+        echo "=========================================="
+        echo -e "\033[31m警告: 此操作将会:"
+        echo "  1. 清除当前系统的所有数据"
+        echo "  2. 重新安装选定的操作系统"
+        echo "  3. 过程中服务器将会重启"
+        echo "  4. 安装过程可能需要10-40分钟\033[0m"
+        echo ""
+        
+        read -p "确认要继续吗? 输入 YES 继续: " confirm
+        
+        if [ "$confirm" = "YES" ]; then
+            echo ""
+            echo "开始重装系统..."
+            echo "请通过VNC或IPMI控制台查看安装进度"
+            echo "安装过程可能需要10-40分钟,请耐心等待..."
+            sleep 3
+            eval $OS_CMD
+            break
+        else
+            echo "已取消操作"
+            return 0
+        fi
+    done
+}
 
 # 显示主菜单的函数
 display_menu() {
     # 显示当前版本号
     get_version # 调用获取版本号函数
-	echo "请选择一个选项："
+	echo "请选择一个选项:"
     echo "1. Network Tools"
     echo "2. Run Tests"
     echo "3. Other"
-    echo "4. Check Update"
+    echo "4. Reinstall OS"
+    echo "5. Check Update"
     echo "0. Uninstall Script"
 	
 	# 恢复颜色为默认颜色
@@ -666,19 +1028,20 @@ display_other_menu() {
 	echo "4. install python"
 	echo "5. install ufw-docker"
 	echo "6. Bandwidth Limit"
+	echo "7. SSH Security Config"
     echo "0. 返回"
 }
 
-# 主程序，处理菜单选择
+# 主程序,处理菜单选择
 while true; do
     display_menu
-    read -p "请选择一个选项：" choice
+    read -p "请选择一个选项:" choice
     case $choice in
         1)
             # 显示network tools 的二级菜单
             while true; do
                 display_network_tools_menu
-                read -p "请选择一个选项：" tools_choice
+                read -p "请选择一个选项:" tools_choice
                 case $tools_choice in
                     1) xrayr ;;  # 调用 XrayR 函数
                     2) warp ;;  # 调用 Warp 函数
@@ -696,7 +1059,7 @@ while true; do
             # 显示运行run test的二级菜单
             while true; do
                 display_run_tests_menu
-                read -p "请选择一个选项：" tests_choice
+                read -p "请选择一个选项:" tests_choice
                 case $tests_choice in
                     1) NodeQuality ;;  # 调用 NodeQuality 函数
                     0) break ;;  # 返回上一层菜单
@@ -708,7 +1071,7 @@ while true; do
             # 显示other的二级菜单
             while true; do
                 display_other_menu
-                read -p "请选择一个选项：" other_choice
+                read -p "请选择一个选项:" other_choice
                 case $other_choice in
                     1) swap ;;  # 调用 Swap 函数
 					2) bt ;;  # 调用 bt 函数
@@ -722,8 +1085,9 @@ while true; do
                 esac
             done
             ;;
-        4) update ;;  # 调用 update 函数
+        4) reinstall_os ;;  # 调用 reinstall_os 函数
+        5) update ;;  # 调用 update 函数
         0) uninstall_script ;;  # 调用 uninstall_script 函数
-        *) echo "无效选项，请重新选择。" ;;  # 输入无效选项的提示
+        *) echo "无效选项,请重新选择。" ;;  # 输入无效选项的提示
     esac
 done
