@@ -229,9 +229,9 @@ network_optimize() {
         ["fs.protected_symlinks"]="1"
         
         # IPv6相关
-        ["net.ipv6.conf.all.disable_ipv6"]="0"
-        ["net.ipv6.conf.default.disable_ipv6"]="0"
-        ["net.ipv6.conf.lo.disable_ipv6"]="0"
+        ["net.ipv6.conf.all.disable_ipv6"]="1"
+        ["net.ipv6.conf.default.disable_ipv6"]="1"
+        ["net.ipv6.conf.lo.disable_ipv6"]="1"
         
         # 延迟优化
         ["net.ipv4.tcp_keepalive_time"]="600"
