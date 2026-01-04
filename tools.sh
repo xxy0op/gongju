@@ -29,7 +29,7 @@ echo -e "${plain}"
 
 
 # 版本号
-VERSION="1.3"	
+VERSION="1.2"	
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -624,6 +624,7 @@ bandwidth_limit() {
 }
 
 # 重装系统功能
+# 重装系统功能
 reinstall_os() {
     echo -e "${green}========== 系统重装工具 ==========${plain}"
     echo -e "${yellow}警告: 重装系统将清除所有数据,请务必备份重要文件!${plain}"
@@ -726,13 +727,13 @@ reinstall_os() {
     # 输入密码
     echo ""
     while true; do
-        read -s -p "请输入root密码: " password
+        read -p "请输入root密码: " password
         echo ""
         if [ -z "$password" ]; then
             echo -e "${red}× 密码不能为空${plain}"
             continue
         fi
-        read -s -p "请再次输入密码确认: " password_confirm
+        read -p "请再次输入密码确认: " password_confirm
         echo ""
         if [ "$password" = "$password_confirm" ]; then
             break
@@ -752,7 +753,7 @@ reinstall_os() {
     
     read -p "确认要继续吗? 输入 YES 继续: " confirm
     
-    if [ "$confirm" = "YES" ]; then
+    if [[ "$confirm" =~ ^[yY][eE][sS]$ ]] || [[ "$confirm" =~ ^[yY]$ ]]; then
         echo ""
         echo "开始重装系统..."
         echo "请通过VNC查看安装进度"
