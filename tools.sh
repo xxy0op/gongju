@@ -625,365 +625,143 @@ bandwidth_limit() {
 
 # 重装系统功能
 reinstall_os() {
-    echo "========== 系统重装工具 =========="
-    echo -e "\033[33m警告: 重装系统将清除所有数据,请务必备份重要文件!\033[0m"
+    echo -e "${green}========== 系统重装工具 ==========${plain}"
+    echo -e "${yellow}警告: 重装系统将清除所有数据,请务必备份重要文件!${plain}"
     echo ""
+    
+    # 检查root权限
+    if [ "$EUID" -ne 0 ]; then
+        echo -e "${red}错误: 此功能需要root权限运行${plain}"
+        return 1
+    fi
     
     # 选择下载源
     echo "请选择下载源:"
     echo "1. 国际源 (GitHub)"
-    echo "2. 国内源 (Gitee)"
+    echo "2. 国内源 (cnb.cool)"
     echo "0. 返回"
     read -p "请选择 [1]: " source_choice
     source_choice=${source_choice:-1}
     
     case $source_choice in
         1)
-            echo "使用国际源下载脚本..."
-            SCRIPT_URL="https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh"
+            echo "使用国际源..."
+            SCRIPT_URL="https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh"
             ;;
         2)
-            echo "使用国内源下载脚本..."
-            SCRIPT_URL="https://gitee.com/mb9e8j2/Tools/raw/master/Linux_reinstall/InstallNET.sh"
+            echo "使用国内源..."
+            SCRIPT_URL="https://cnb.cool/bin456789/reinstall/-/git/raw/main/reinstall.sh"
             ;;
         0)
             return 0
             ;;
         *)
-            echo "无效选项,返回主菜单"
+            echo -e "${red}无效选项${plain}"
             return 1
             ;;
     esac
     
     # 下载重装脚本
     echo "正在下载重装脚本..."
-    wget --no-check-certificate -qO InstallNET.sh "$SCRIPT_URL"
+    wget --no-check-certificate -O reinstall.sh "$SCRIPT_URL" 2>/dev/null || \
+    curl -LsO "$SCRIPT_URL" 2>/dev/null
     
-    if [ ! -f "InstallNET.sh" ]; then
-        echo -e "\033[31m× 脚本下载失败,请检查网络连接\033[0m"
+    if [ ! -f "reinstall.sh" ] || [ ! -s "reinstall.sh" ]; then
+        echo -e "${red}× 脚本下载失败,请检查网络连接${plain}"
         return 1
     fi
     
-    chmod a+x InstallNET.sh
-    echo -e "\033[32m✓ 脚本下载成功\033[0m"
+    chmod a+x reinstall.sh
+    echo -e "${green}✓ 脚本下载成功${plain}"
     echo ""
     
-    # 显示系统选择菜单
-    while true; do
-        echo "========== 选择要安装的系统 =========="
-        echo "Linux 系统:"
-        echo "  1. Debian (推荐: 稳定可靠)"
-        echo "  2. Ubuntu"
-        echo "  3. CentOS"
-        echo "  4. AlmaLinux"
-        echo "  5. RockyLinux"
-        echo "  6. Fedora"
-        echo "  7. Kali Linux"
-        echo "  8. Alpine Linux (轻量级)"
-        echo ""
-        echo "Windows 系统:"
-        echo "  9. Windows Server 2022"
-        echo "  10. Windows Server 2019"
-        echo "  11. Windows Server 2016"
-        echo "  12. Windows Server 2012 R2"
-        echo "  13. Windows 11 Pro"
-        echo "  14. Windows 10 Enterprise LTSC"
-        echo ""
-        echo "  0. 返回"
-        echo ""
-        read -p "请选择系统 [1]: " os_choice
-        os_choice=${os_choice:-1}
-        
-        case $os_choice in
-            1)
-                echo ""
-                echo "Debian 版本选择:"
-                echo "1. Debian 12 (最新稳定版,推荐)"
-                echo "2. Debian 11"
-                echo "3. Debian 10"
-                read -p "请选择版本 [1]: " debian_ver
-                debian_ver=${debian_ver:-1}
-                case $debian_ver in
-                    1) OS_CMD="bash InstallNET.sh -debian 12" ;;
-                    2) OS_CMD="bash InstallNET.sh -debian 11" ;;
-                    3) OS_CMD="bash InstallNET.sh -debian 10" ;;
-                    *) echo "无效选项"; continue ;;
-                esac
-                ;;
-            2)
-                echo ""
-                echo "Ubuntu 版本选择:"
-                echo "1. Ubuntu 24.04 LTS (最新)"
-                echo "2. Ubuntu 22.04 LTS"
-                echo "3. Ubuntu 20.04 LTS"
-                read -p "请选择版本 [2]: " ubuntu_ver
-                ubuntu_ver=${ubuntu_ver:-2}
-                case $ubuntu_ver in
-                    1) OS_CMD="bash InstallNET.sh -ubuntu 24.04" ;;
-                    2) OS_CMD="bash InstallNET.sh -ubuntu 22.04" ;;
-                    3) OS_CMD="bash InstallNET.sh -ubuntu 20.04" ;;
-                    *) echo "无效选项"; continue ;;
-                esac
-                ;;
-            3)
-                echo ""
-                echo "CentOS 版本选择:"
-                echo "1. CentOS 9 Stream"
-                echo "2. CentOS 8 Stream"
-                echo "3. CentOS 7"
-                read -p "请选择版本 [1]: " centos_ver
-                centos_ver=${centos_ver:-1}
-                case $centos_ver in
-                    1) OS_CMD="bash InstallNET.sh -centos 9-stream" ;;
-                    2) OS_CMD="bash InstallNET.sh -centos 8-stream" ;;
-                    3) OS_CMD="bash InstallNET.sh -centos 7" ;;
-                    *) echo "无效选项"; continue ;;
-                esac
-                ;;
-            4)
-                echo ""
-                echo "AlmaLinux 版本选择:"
-                echo "1. AlmaLinux 9 (推荐)"
-                echo "2. AlmaLinux 8"
-                read -p "请选择版本 [1]: " alma_ver
-                alma_ver=${alma_ver:-1}
-                case $alma_ver in
-                    1) OS_CMD="bash InstallNET.sh -almalinux 9" ;;
-                    2) OS_CMD="bash InstallNET.sh -almalinux 8" ;;
-                    *) echo "无效选项"; continue ;;
-                esac
-                ;;
-            5)
-                echo ""
-                echo "RockyLinux 版本选择:"
-                echo "1. RockyLinux 9 (推荐)"
-                echo "2. RockyLinux 8"
-                read -p "请选择版本 [1]: " rocky_ver
-                rocky_ver=${rocky_ver:-1}
-                case $rocky_ver in
-                    1) OS_CMD="bash InstallNET.sh -rockylinux 9" ;;
-                    2) OS_CMD="bash InstallNET.sh -rockylinux 8" ;;
-                    *) echo "无效选项"; continue ;;
-                esac
-                ;;
-            6)
-                echo ""
-                echo "Fedora 版本选择:"
-                echo "1. Fedora 39"
-                echo "2. Fedora 38"
-                read -p "请选择版本 [1]: " fedora_ver
-                fedora_ver=${fedora_ver:-1}
-                case $fedora_ver in
-                    1) OS_CMD="bash InstallNET.sh -fedora 39" ;;
-                    2) OS_CMD="bash InstallNET.sh -fedora 38" ;;
-                    *) echo "无效选项"; continue ;;
-                esac
-                ;;
-            7)
-                OS_CMD="bash InstallNET.sh -kali"
-                ;;
-            8)
-                echo ""
-                echo "Alpine Linux 版本选择:"
-                echo "1. Alpine Edge (滚动更新,推荐)"
-                echo "2. Alpine 3.18"
-                echo "3. Alpine 3.17"
-                read -p "请选择版本 [1]: " alpine_ver
-                alpine_ver=${alpine_ver:-1}
-                case $alpine_ver in
-                    1) OS_CMD="bash InstallNET.sh -alpine edge" ;;
-                    2) OS_CMD="bash InstallNET.sh -alpine 3.18" ;;
-                    3) OS_CMD="bash InstallNET.sh -alpine 3.17" ;;
-                    *) echo "无效选项"; continue ;;
-                esac
-                ;;
-            9)
-                OS_CMD="bash InstallNET.sh -windows 2022"
-                ;;
-            10)
-                OS_CMD="bash InstallNET.sh -windows 2019"
-                ;;
-            11)
-                OS_CMD="bash InstallNET.sh -windows 2016"
-                ;;
-            12)
-                OS_CMD="bash InstallNET.sh -windows 2012"
-                ;;
-            13)
-                OS_CMD="bash InstallNET.sh -windows 11"
-                ;;
-            14)
-                OS_CMD="bash InstallNET.sh -windows 10"
-                ;;
-            0)
-                echo "返回主菜单"
-                return 0
-                ;;
-            *)
-                echo "无效选项,请重新选择"
-                continue
-                ;;
-        esac
-        
-        # 配置自定义选项
-        echo ""
-        echo "=========================================="
-        echo "高级配置选项 (可选)"
-        echo "=========================================="
-        
-        # 检查是否为Windows系统
-        IS_WINDOWS=0
-        if [[ "$OS_CMD" == *"-windows"* ]]; then
-            IS_WINDOWS=1
-        fi
-        
-        # 询问是否修改SSH端口 (Windows不支持)
-        if [ $IS_WINDOWS -eq 0 ]; then
-            read -p "是否需要自定义SSH端口? [y/N]: " custom_port
-            if [[ "$custom_port" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-                while true; do
-                    read -p "请输入SSH端口号 (1-65535) [默认22]: " ssh_port
-                    ssh_port=${ssh_port:-22}
-                    if [[ "$ssh_port" =~ ^[0-9]+$ ]] && [ "$ssh_port" -ge 1 ] && [ "$ssh_port" -le 65535 ]; then
-                        OS_CMD="$OS_CMD -port \"$ssh_port\""
-                        echo -e "\033[32m✓ SSH端口已设置为: $ssh_port\033[0m"
-                        break
-                    else
-                        echo -e "\033[31m× 无效的端口号,请输入1-65535之间的数字\033[0m"
-                    fi
-                done
-            else
-                echo "使用默认SSH端口: 22"
-            fi
-        else
-            echo -e "\033[33m注意: Windows系统不支持自定义SSH端口\033[0m"
-        fi
-        
-        # 询问是否修改密码
-        # 检查是否支持密码自定义
-        SUPPORT_PWD=1
-        if [[ "$OS_CMD" == *"-alpine"* ]] || [[ "$OS_CMD" == *"-ubuntu"* ]] || [[ "$OS_CMD" == *"-windows"* ]]; then
-            SUPPORT_PWD=0
-            echo -e "\033[33m注意: 该系统使用DD镜像安装方式,不支持自定义密码\033[0m"
-            if [[ "$OS_CMD" == *"-windows"* ]]; then
-                echo "  Windows系统默认密码: Teddysun.com"
-                echo "  RDP端口: 3389"
-            else
-                echo "  默认密码: LeitboGi0ro"
-            fi
-        else
-            read -p "是否需要自定义登录密码? [y/N]: " custom_pwd
-            if [[ "$custom_pwd" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-                while true; do
-                    read -s -p "请输入新密码: " new_password
-                    echo ""
-                    if [ -z "$new_password" ]; then
-                        echo -e "\033[31m× 密码不能为空\033[0m"
-                        continue
-                    fi
-                    # 检查密码中是否包含单引号
-                    if [[ "$new_password" == *"'"* ]]; then
-                        echo -e "\033[33m警告: 密码中包含单引号,将自动转义处理\033[0m"
-                    fi
-                    read -s -p "请再次输入密码确认: " new_password_confirm
-                    echo ""
-                    if [ "$new_password" = "$new_password_confirm" ]; then
-                        # 转义密码中的单引号
-                        escaped_password="${new_password//\'/\'\\\'\'}"
-                        OS_CMD="$OS_CMD -pwd '$escaped_password'"
-                        echo -e "\033[32m✓ 自定义密码已设置\033[0m"
-                        break
-                    else
-                        echo -e "\033[31m× 两次输入的密码不一致,请重新输入\033[0m"
-                    fi
-                done
-            else
-                echo "使用默认密码: LeitboGi0ro"
-            fi
-        fi
-        
-        # 确认是否继续
-        echo ""
-        echo "=========================================="
-        echo "最终配置信息:"
-        echo "=========================================="
-        
-        # 显示系统信息
-        if [[ "$OS_CMD" == *"-debian"* ]]; then
-            echo "系统: Debian"
-        elif [[ "$OS_CMD" == *"-ubuntu"* ]]; then
-            echo "系统: Ubuntu (DD镜像安装)"
-        elif [[ "$OS_CMD" == *"-centos"* ]]; then
-            echo "系统: CentOS"
-        elif [[ "$OS_CMD" == *"-almalinux"* ]]; then
-            echo "系统: AlmaLinux"
-        elif [[ "$OS_CMD" == *"-rockylinux"* ]]; then
-            echo "系统: RockyLinux"
-        elif [[ "$OS_CMD" == *"-fedora"* ]]; then
-            echo "系统: Fedora"
-        elif [[ "$OS_CMD" == *"-kali"* ]]; then
-            echo "系统: Kali Linux"
-        elif [[ "$OS_CMD" == *"-alpine"* ]]; then
-            echo "系统: Alpine Linux (DD镜像安装)"
-        elif [[ "$OS_CMD" == *"-windows"* ]]; then
-            echo "系统: Windows (DD镜像安装)"
-        fi
-        
-        # 显示端口信息
-        if [ $IS_WINDOWS -eq 0 ]; then
-            if [[ "$custom_port" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-                echo "SSH端口: $ssh_port (自定义)"
-            else
-                echo "SSH端口: 22 (默认)"
-            fi
-        else
-            echo "RDP端口: 3389 (默认)"
-        fi
-        
-        # 显示密码信息
-        if [ $SUPPORT_PWD -eq 1 ]; then
-            if [[ "$custom_pwd" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-                echo "登录密码: ******** (自定义)"
-            else
-                echo "登录密码: LeitboGi0ro (默认)"
-            fi
-        else
-            if [[ "$OS_CMD" == *"-windows"* ]]; then
-                echo "登录密码: Teddysun.com (默认,无法自定义)"
-                echo "登录用户: Administrator"
-            else
-                echo "登录密码: LeitboGi0ro (默认,无法自定义)"
-                echo "登录用户: root"
-            fi
-        fi
-        
-        echo ""
-        echo "=========================================="
-        echo -e "\033[33m即将执行命令:\033[0m"
-        echo -e "\033[36m$OS_CMD\033[0m"
-        echo "=========================================="
-        echo -e "\033[31m警告: 此操作将会:"
-        echo "  1. 清除当前系统的所有数据"
-        echo "  2. 重新安装选定的操作系统"
-        echo "  3. 过程中服务器将会重启"
-        echo "  4. 安装过程可能需要10-40分钟\033[0m"
-        echo ""
-        
-        read -p "确认要继续吗? 输入 YES 继续: " confirm
-        
-        if [ "$confirm" = "YES" ]; then
+    # 选择系统
+    echo "请选择系统:"
+    echo "1. Debian"
+    echo "2. Ubuntu"
+    echo "0. 返回"
+    read -p "请选择 [1]: " os_choice
+    os_choice=${os_choice:-1}
+    
+    case $os_choice in
+        1)
             echo ""
-            echo "开始重装系统..."
-            echo "请通过VNC或IPMI控制台查看安装进度"
-            echo "安装过程可能需要10-40分钟,请耐心等待..."
-            sleep 3
-            eval $OS_CMD
+            echo "请选择Debian版本:"
+            echo "1. Debian 13"
+            echo "2. Debian 12"
+            echo "3. Debian 11"
+            read -p "请选择版本 [2]: " debian_ver
+            debian_ver=${debian_ver:-2}
+            case $debian_ver in
+                1) OS_NAME="debian" && OS_VER="13" ;;
+                2) OS_NAME="debian" && OS_VER="12" ;;
+                3) OS_NAME="debian" && OS_VER="11" ;;
+                *) echo "无效选项"; return 1 ;;
+            esac
+            ;;
+        2)
+            echo ""
+            echo "请选择Ubuntu版本:"
+            echo "1. Ubuntu 24.04"
+            echo "2. Ubuntu 22.04"
+            echo "3. Ubuntu 20.04"
+            read -p "请选择版本 [1]: " ubuntu_ver
+            ubuntu_ver=${ubuntu_ver:-1}
+            case $ubuntu_ver in
+                1) OS_NAME="ubuntu" && OS_VER="24.04" ;;
+                2) OS_NAME="ubuntu" && OS_VER="22.04" ;;
+                3) OS_NAME="ubuntu" && OS_VER="20.04" ;;
+                *) echo "无效选项"; return 1 ;;
+            esac
+            ;;
+        0)
+            return 0
+            ;;
+        *)
+            echo -e "${red}无效选项${plain}"
+            return 1
+            ;;
+    esac
+    
+    # 输入密码
+    echo ""
+    while true; do
+        read -s -p "请输入root密码: " password
+        echo ""
+        if [ -z "$password" ]; then
+            echo -e "${red}× 密码不能为空${plain}"
+            continue
+        fi
+        read -s -p "请再次输入密码确认: " password_confirm
+        echo ""
+        if [ "$password" = "$password_confirm" ]; then
             break
         else
-            echo "已取消操作"
-            return 0
+            echo -e "${red}× 两次输入的密码不一致,请重新输入${plain}"
         fi
     done
+    
+    # 显示最终命令
+    echo ""
+    echo "=========================================="
+    echo "即将执行:"
+    echo -e "${cyan}./reinstall.sh $OS_NAME $OS_VER --password xxxx${plain}"
+    echo ""
+    echo -e "${red}警告: 此操作将会清除所有数据并重启服务器${plain}"
+    echo ""
+    
+    read -p "确认要继续吗? 输入 YES 继续: " confirm
+    
+    if [ "$confirm" = "YES" ]; then
+        echo ""
+        echo "开始重装系统..."
+        echo "请通过VNC查看安装进度"
+        sleep 2
+        ./reinstall.sh "$OS_NAME" "$OS_VER" --password "$password"
+        exit 0
+    else
+        echo "已取消操作"
+    fi
 }
 
 # 显示主菜单的函数
