@@ -29,7 +29,7 @@ echo -e "${plain}"
 
 
 # 版本号
-VERSION="1.3"	
+VERSION="1.0"	
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -131,7 +131,7 @@ network_optimize() {
     # 获取系统总内存(KB)
     total_mem=$(cat /proc/meminfo | grep MemTotal | awk '{print $2}')
 
-    # 计算TCP内存参数 (基于总内存页数，假设4KB页)
+    # 计算TCP内存参数 (基于总内存页数,假设4KB页)
     total_pages=$((total_mem / 4))
     t_min=$((total_pages / 4))
     t_avg=$((total_pages / 2))
@@ -146,8 +146,8 @@ network_optimize() {
 
     # 选择优化策略
     echo "请选择优化策略:"
-    echo "1. 临近策略 (香港/日本/新加坡等，低延迟)"
-    echo "2. 远距离策略 (美国/加拿大等，高延迟)"
+    echo "1. 临近策略 (香港/日本/新加坡等,低延迟)"
+    echo "2. 远距离策略 (美国/加拿大等,高延迟)"
     read -p "请选择 [1]: " strategy
     strategy=${strategy:-1}
 
@@ -157,21 +157,31 @@ network_optimize() {
             rmem_max="67108864"   # 64MB
             wmem_max="67108864"   # 64MB
             backlog="131072"
+            strategy_name="远距离优化"
             ;;
         *)
             echo "应用临近优化参数..."
             rmem_max="33554432"   # 32MB
             wmem_max="33554432"   # 32MB
             backlog="262144"
+            strategy_name="临近优化"
             ;;
     esac
 
     # 准备sysctl参数
     declare -A params=(
-        # IPv6禁用
-        ["net.ipv6.conf.all.disable_ipv6"]="1"
-        ["net.ipv6.conf.default.disable_ipv6"]="1"
-        ["net.ipv6.conf.lo.disable_ipv6"]="1"
+        # IPv6启用和配置
+        ["net.ipv6.conf.all.disable_ipv6"]="0"
+        ["net.ipv6.conf.default.disable_ipv6"]="0"
+        ["net.ipv6.conf.lo.disable_ipv6"]="0"
+        ["net.ipv6.conf.all.forwarding"]="1"
+        ["net.ipv6.conf.default.forwarding"]="1"
+        ["net.ipv6.conf.all.accept_ra"]="2"
+        ["net.ipv6.conf.default.accept_ra"]="2"
+        ["net.ipv6.conf.all.accept_redirects"]="0"
+        ["net.ipv6.conf.default.accept_redirects"]="0"
+        ["net.ipv6.conf.all.autoconf"]="1"
+        ["net.ipv6.conf.default.autoconf"]="1"
 
         # TCP拥塞控制 - BBR
         ["net.ipv4.tcp_congestion_control"]="bbr"
@@ -267,7 +277,37 @@ EOF
 
     # 应用所有sysctl参数
     sysctl -p > /dev/null 2>&1
-    echo "网络优化完成!"
+
+    # 显示优化摘要
+    echo ""
+    echo "========================================="
+    echo "           优化摘要"
+    echo "========================================="
+    echo "优化策略: $strategy_name"
+    echo "系统内存: $(awk "BEGIN {printf \"%.2f GB\", $total_mem/1024/1024}")"
+    echo "-----------------------------------------"
+    echo "缓冲区配置:"
+    echo "  接收缓冲: $(awk "BEGIN {printf \"%.0f MB\", $rmem_max/1024/1024}")"
+    echo "  发送缓冲: $(awk "BEGIN {printf \"%.0f MB\", $wmem_max/1024/1024}")"
+    echo "  连接队列: $backlog"
+    echo "-----------------------------------------"
+    echo "网络协议:"
+    echo "  IPv4转发: $(sysctl -n net.ipv4.ip_forward 2>/dev/null || echo '未知')"
+    echo "  IPv6转发: $(sysctl -n net.ipv6.conf.all.forwarding 2>/dev/null || echo '未知')"
+    echo "  IPv6状态: 已启用"
+    echo "-----------------------------------------"
+    echo "TCP优化:"
+    echo "  拥塞控制: $(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || echo '未知')"
+    echo "  队列算法: $(sysctl -n net.core.default_qdisc 2>/dev/null || echo '未知')"
+    echo "  Fast Open: $(sysctl -n net.ipv4.tcp_fastopen 2>/dev/null || echo '未知')"
+    echo "-----------------------------------------"
+    echo "系统限制:"
+    echo "  文件描述符: 1048576"
+    echo "  最大进程数: 1048576"
+    echo "  最大PID: $(sysctl -n kernel.pid_max 2>/dev/null || echo '未知')"
+    echo "========================================="
+    echo "网络优化完成! 建议重启系统以确保所有配置生效"
+    echo "========================================="
 }
 
 # 安装 nxtrace 脚本
