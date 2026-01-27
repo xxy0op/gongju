@@ -413,15 +413,13 @@ python() {
 
 # SSH安全配置功能 - 禁用密码登录,启用密钥登录
 ssh_security() {
-    # 安装/配置 SSH 相关（仅配置，不安装 ssh）
     echo "===== SSH 密钥登录加固 ====="
 
-    # 目标用户与文件
     TARGET_USER="root"
     TARGET_HOME="/root"
     AUTH_KEYS="$TARGET_HOME/.ssh/authorized_keys"
 
-    # 输入公钥
+    # 1. 输入公钥
     echo ""
     echo "请输入 SSH 公钥（ssh-ed25519 / ssh-rsa ...）："
     read -r SSH_PUBKEY
@@ -431,7 +429,7 @@ ssh_security() {
         return 1
     fi
 
-    # 创建目录并写入公钥（追加）
+    # 2. 添加公钥（追加）
     mkdir -p "$TARGET_HOME/.ssh"
     chmod 700 "$TARGET_HOME/.ssh"
 
@@ -447,33 +445,36 @@ ssh_security() {
 
     chown -R "$TARGET_USER:$TARGET_USER" "$TARGET_HOME/.ssh"
 
-    # 配置文件（只改两项）
+    # 3. 强制配置（确保永远不被覆盖）
+    #    关键：使用 Match all + zz 前缀保证最后加载
     CONF_DIR="/etc/ssh/sshd_config.d"
-    CONF_FILE="$CONF_DIR/99-keyonly.conf"
+    CONF_FILE="$CONF_DIR/zz-keyonly.conf"
 
     mkdir -p "$CONF_DIR"
 
     cat > "$CONF_FILE" <<'EOF'
-# enforced key-only authentication
-PubkeyAuthentication yes
-PasswordAuthentication no
+# enforced key-only authentication (highest priority)
+Match all
+    PasswordAuthentication no
+    PubkeyAuthentication yes
 EOF
 
     chmod 644 "$CONF_FILE"
 
-    # cloud-init 防覆盖（只改这一项）
+    # 4. 防 cloud-init 覆盖（只改一项）
     if [ -f /etc/cloud/cloud.cfg ]; then
         sed -i 's/^ssh_pwauth:.*/ssh_pwauth: false/' /etc/cloud/cloud.cfg || true
     fi
 
-    # 校验配置并重启 ssh
+    # 5. 校验 + 重启
     sshd -t
     sshd -T | grep -E '^(pubkeyauthentication|passwordauthentication)'
 
     systemctl restart sshd
 
-    echo "✅ SSH 已设置为：仅密钥登录"
+    echo "✅ SSH 已设置为：仅密钥登录（不可被覆盖）"
 }
+
 
 
 
@@ -585,7 +586,6 @@ bandwidth_limit() {
     done
 }
 
-# 重装系统功能
 # 重装系统功能
 reinstall_os() {
     echo -e "${green}========== 系统重装工具 ==========${plain}"
