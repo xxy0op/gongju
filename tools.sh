@@ -412,7 +412,7 @@ python() {
 }
 
 # SSH安全配置功能 - 禁用密码登录,启用密钥登录
-ssh_security_keyonly() {
+ssh_security() {
     set -e
 
     echo "===== SSH 密钥登录加固 ====="
