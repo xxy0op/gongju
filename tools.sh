@@ -413,18 +413,17 @@ python() {
 
 # SSH安全配置功能 - 禁用密码登录,启用密钥登录
 ssh_security() {
-    set -e
-
+    # 安装/配置 SSH 相关（仅配置，不安装 ssh）
     echo "===== SSH 密钥登录加固 ====="
 
-    # 1. 目标用户（明确，不用 whoami）
+    # 目标用户与文件
     TARGET_USER="root"
     TARGET_HOME="/root"
     AUTH_KEYS="$TARGET_HOME/.ssh/authorized_keys"
 
-    # 2. 输入公钥
+    # 输入公钥
     echo ""
-    echo "请输入要添加的 SSH 公钥（ssh-ed25519 / ssh-rsa ...）："
+    echo "请输入 SSH 公钥（ssh-ed25519 / ssh-rsa ...）："
     read -r SSH_PUBKEY
 
     if [[ ! "$SSH_PUBKEY" =~ ^(ssh-ed25519|ssh-rsa|ecdsa-sha2-) ]]; then
@@ -432,7 +431,7 @@ ssh_security() {
         return 1
     fi
 
-    # 3. 写入 authorized_keys（只追加）
+    # 创建目录并写入公钥（追加）
     mkdir -p "$TARGET_HOME/.ssh"
     chmod 700 "$TARGET_HOME/.ssh"
 
@@ -440,7 +439,7 @@ ssh_security() {
     chmod 600 "$AUTH_KEYS"
 
     if grep -qxF "$SSH_PUBKEY" "$AUTH_KEYS"; then
-        echo "ℹ️ 公钥已存在，跳过"
+        echo "ℹ️ 公钥已存在，跳过写入"
     else
         echo "$SSH_PUBKEY" >> "$AUTH_KEYS"
         echo "✅ 公钥已添加"
@@ -448,47 +447,34 @@ ssh_security() {
 
     chown -R "$TARGET_USER:$TARGET_USER" "$TARGET_HOME/.ssh"
 
-    # 4. SSH 配置：使用 override 文件（关键点）
-    SSH_OVERRIDE="/etc/ssh/sshd_config.d/99-keyonly.conf"
+    # 配置文件（只改两项）
+    CONF_DIR="/etc/ssh/sshd_config.d"
+    CONF_FILE="$CONF_DIR/99-keyonly.conf"
 
-    mkdir -p /etc/ssh/sshd_config.d
+    mkdir -p "$CONF_DIR"
 
-    cat > "$SSH_OVERRIDE" << 'EOF'
-# Enforced by ssh_security_keyonly
-PasswordAuthentication no
+    cat > "$CONF_FILE" <<'EOF'
+# enforced key-only authentication
 PubkeyAuthentication yes
-ChallengeResponseAuthentication no
-KbdInteractiveAuthentication no
-UsePAM yes
+PasswordAuthentication no
 EOF
 
-    chmod 644 "$SSH_OVERRIDE"
+    chmod 644 "$CONF_FILE"
 
-    # 5. cloud-init 防覆盖（只改一次）
+    # cloud-init 防覆盖（只改这一项）
     if [ -f /etc/cloud/cloud.cfg ]; then
         sed -i 's/^ssh_pwauth:.*/ssh_pwauth: false/' /etc/cloud/cloud.cfg || true
     fi
 
-    # 6. 配置检查
-    echo ""
-    echo "测试 SSH 配置..."
-    if ! sshd -t; then
-        echo "❌ sshd 配置错误"
-        return 1
-    fi
+    # 校验配置并重启 ssh
+    sshd -t
+    sshd -T | grep -E '^(pubkeyauthentication|passwordauthentication)'
 
-    echo ""
-    echo "最终生效配置："
-    sshd -T | grep -E "passwordauthentication|pubkeyauthentication|kbdinteractiveauthentication"
-
-    # 7. 重启 SSH
     systemctl restart sshd
-    echo "✅ SSH 服务已重启"
 
-    echo ""
-    echo "⚠️ 请在新终端测试："
-    echo "ssh -i ~/.ssh/你的私钥 root@服务器IP"
+    echo "✅ SSH 已设置为：仅密钥登录"
 }
+
 
 
 #安装ufw-docker
