@@ -412,6 +412,8 @@ python() {
 }
 
 # SSH安全配置功能 - 禁用密码登录,启用密钥登录
+#!/bin/bash
+
 ssh_security() {
     echo "========== SSH安全配置 =========="
     echo "此功能将会:"
@@ -424,8 +426,28 @@ ssh_security() {
     echo ""
     
     # 检查是否已存在授权密钥
-    if [ ! -f ~/.ssh/authorized_keys ] || [ ! -s ~/.ssh/authorized_keys ]; then
+    # 不仅检查文件是否存在，还要检查是否有有效的密钥
+    has_valid_key=false
+    
+    if [ -f ~/.ssh/authorized_keys ]; then
+        # 检查是否有有效的公钥（以ssh-开头或ecdsa-开头的非注释行）
+        if grep -qE "^(ssh-rsa|ssh-dss|ssh-ed25519|ecdsa-sha2-)" ~/.ssh/authorized_keys 2>/dev/null; then
+            has_valid_key=true
+            key_count=$(grep -cE "^(ssh-rsa|ssh-dss|ssh-ed25519|ecdsa-sha2-)" ~/.ssh/authorized_keys 2>/dev/null)
+            echo -e "\033[32m✓ 检测到已存在 $key_count 个SSH密钥\033[0m"
+        fi
+    fi
+    
+    if [ "$has_valid_key" = false ]; then
         echo -e "\033[33m检测到您还没有设置SSH密钥。\033[0m"
+        
+        # 如果文件存在但没有有效密钥，显示文件内容供参考
+        if [ -f ~/.ssh/authorized_keys ] && [ -s ~/.ssh/authorized_keys ]; then
+            echo -e "\033[33m当前 authorized_keys 文件内容：\033[0m"
+            cat ~/.ssh/authorized_keys | head -5
+            echo ""
+        fi
+        
         read -p "是否现在添加SSH公钥?[Y/n]: " add_key_response
         add_key_response=${add_key_response:-Y}
         
@@ -438,9 +460,15 @@ ssh_security() {
             read -r ssh_public_key
             
             if [ -n "$ssh_public_key" ]; then
-                echo "$ssh_public_key" >> ~/.ssh/authorized_keys
-                chmod 600 ~/.ssh/authorized_keys
-                echo -e "\033[32m✓ SSH公钥已添加到authorized_keys\033[0m"
+                # 验证公钥格式
+                if [[ "$ssh_public_key" =~ ^(ssh-rsa|ssh-dss|ssh-ed25519|ecdsa-sha2-) ]]; then
+                    echo "$ssh_public_key" >> ~/.ssh/authorized_keys
+                    chmod 600 ~/.ssh/authorized_keys
+                    echo -e "\033[32m✓ SSH公钥已添加到authorized_keys\033[0m"
+                else
+                    echo -e "\033[31m× 公钥格式无效（应以ssh-rsa、ssh-ed25519等开头）,操作取消\033[0m"
+                    return 1
+                fi
             else
                 echo -e "\033[31m× 未输入有效的公钥,操作取消\033[0m"
                 return 1
@@ -449,8 +477,6 @@ ssh_security() {
             echo -e "\033[31m× 没有SSH密钥的情况下禁用密码登录是危险的,操作取消\033[0m"
             return 1
         fi
-    else
-        echo -e "\033[32m✓ 检测到已存在SSH密钥\033[0m"
     fi
     
     # 检测所有可能的SSH配置文件
@@ -732,6 +758,11 @@ EOF
         return 1
     fi
 }
+
+# 如果直接运行此脚本（而不是source），则执行函数
+if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
+    ssh_security
+fi
 
 #安装ufw-docker
 add_ufw_docker_rules() {
