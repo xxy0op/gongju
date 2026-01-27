@@ -29,7 +29,7 @@ echo -e "${plain}"
 
 
 # 版本号
-VERSION="1.2"	
+VERSION="1.5"	
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -412,10 +412,19 @@ python() {
 }
 
 # SSH安全配置功能 - 禁用密码登录,启用密钥登录
-#!/bin/bash
-
 ssh_security() {
     echo "========== SSH安全配置 =========="
+    echo ""
+    
+    # 使用当前用户
+    target_user=$(whoami)
+    target_home="$HOME"
+    auth_keys_file="$target_home/.ssh/authorized_keys"
+    
+    echo "配置用户: $target_user"
+    echo "HOME目录: $target_home"
+    echo ""
+    
     echo "此功能将会:"
     echo "1. 禁用SSH密码登录"
     echo "2. 启用SSH密钥登录"
@@ -426,51 +435,179 @@ ssh_security() {
     echo ""
     
     # 检查是否已存在授权密钥
-    # 不仅检查文件是否存在，还要检查是否有有效的密钥
     has_valid_key=false
     
-    if [ -f ~/.ssh/authorized_keys ]; then
-        # 检查是否有有效的公钥（以ssh-开头或ecdsa-开头的非注释行）
-        if grep -qE "^(ssh-rsa|ssh-dss|ssh-ed25519|ecdsa-sha2-)" ~/.ssh/authorized_keys 2>/dev/null; then
+    if [ -f "$auth_keys_file" ]; then
+        echo "检查密钥文件: $auth_keys_file"
+        
+        # 显示文件信息
+        file_size=$(stat -c%s "$auth_keys_file" 2>/dev/null || stat -f%z "$auth_keys_file" 2>/dev/null)
+        echo "  文件大小: $file_size 字节"
+        
+        # 检查是否有有效的公钥
+        if grep -qE "^(ssh-rsa|ssh-dss|ssh-ed25519|ecdsa-sha2-)" "$auth_keys_file" 2>/dev/null; then
             has_valid_key=true
-            key_count=$(grep -cE "^(ssh-rsa|ssh-dss|ssh-ed25519|ecdsa-sha2-)" ~/.ssh/authorized_keys 2>/dev/null)
-            echo -e "\033[32m✓ 检测到已存在 $key_count 个SSH密钥\033[0m"
+            key_count=$(grep -cE "^(ssh-rsa|ssh-dss|ssh-ed25519|ecdsa-sha2-)" "$auth_keys_file" 2>/dev/null)
+            echo -e "\033[32m✓ 检测到已存在 $key_count 个有效SSH密钥\033[0m"
+            echo ""
+            echo "密钥列表:"
+            grep -E "^(ssh-rsa|ssh-dss|ssh-ed25519|ecdsa-sha2-)" "$auth_keys_file" | while read line; do
+                key_type=$(echo "$line" | awk '{print $1}')
+                key_comment=$(echo "$line" | awk '{print $NF}')
+                key_preview=$(echo "$line" | awk '{print $2}' | cut -c1-20)
+                echo "  • 类型: $key_type"
+                echo "    预览: ${key_preview}..."
+                echo "    注释: $key_comment"
+                echo ""
+            done
+        else
+            echo -e "\033[33m⚠ 文件存在但没有有效密钥\033[0m"
+            if [ "$file_size" -gt 0 ]; then
+                echo "  文件内容预览（可能是注释或空行）:"
+                echo "  ----------------------------------------"
+                head -5 "$auth_keys_file" | cat -n
+                echo "  ----------------------------------------"
+            fi
         fi
+    else
+        echo "密钥文件不存在: $auth_keys_file"
     fi
+    echo ""
     
+    # 处理密钥配置
     if [ "$has_valid_key" = false ]; then
         echo -e "\033[33m检测到您还没有设置SSH密钥。\033[0m"
+        should_add_key=true
+    else
+        # 已有密钥，询问是否要重新配置
+        echo ""
+        echo "密钥管理选项:"
+        echo "1. 保持现有密钥不变"
+        echo "2. 添加新密钥（保留现有密钥）"
+        echo "3. 删除所有现有密钥并重新配置"
+        read -p "请选择 [1/2/3]: " key_option
         
-        # 如果文件存在但没有有效密钥，显示文件内容供参考
-        if [ -f ~/.ssh/authorized_keys ] && [ -s ~/.ssh/authorized_keys ]; then
-            echo -e "\033[33m当前 authorized_keys 文件内容：\033[0m"
-            cat ~/.ssh/authorized_keys | head -5
-            echo ""
-        fi
-        
+        case $key_option in
+            1)
+                echo -e "\033[32m✓ 将保持现有密钥\033[0m"
+                should_add_key=false
+                ;;
+            2)
+                echo -e "\033[33m将添加新密钥到现有密钥列表\033[0m"
+                should_add_key=true
+                ;;
+            3)
+                echo -e "\033[31m警告: 即将删除所有现有密钥!\033[0m"
+                read -p "确认删除所有现有密钥?[y/N]: " confirm_delete
+                
+                if [[ "$confirm_delete" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+                    # 备份现有密钥
+                    backup_keys_dir="$target_home/.ssh/backup_keys_$(date +%Y%m%d_%H%M%S)"
+                    mkdir -p "$backup_keys_dir"
+                    if [ -f "$auth_keys_file" ]; then
+                        cp "$auth_keys_file" "$backup_keys_dir/authorized_keys.bak"
+                        echo -e "\033[32m✓ 已备份现有密钥到: $backup_keys_dir/authorized_keys.bak\033[0m"
+                    fi
+                    
+                    # 清空密钥文件
+                    > "$auth_keys_file"
+                    echo -e "\033[32m✓ 已清空所有现有密钥\033[0m"
+                    should_add_key=true
+                else
+                    echo "操作取消"
+                    return 0
+                fi
+                ;;
+            *)
+                echo "保持现有密钥"
+                should_add_key=false
+                ;;
+        esac
+    fi
+    
+    # 添加新密钥
+    if [ "$should_add_key" = true ]; then
+        echo ""
         read -p "是否现在添加SSH公钥?[Y/n]: " add_key_response
         add_key_response=${add_key_response:-Y}
         
         if [[ "$add_key_response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
             # 创建.ssh目录
-            mkdir -p ~/.ssh
-            chmod 700 ~/.ssh
+            mkdir -p "$target_home/.ssh"
+            chmod 700 "$target_home/.ssh"
             
-            echo "请输入您的SSH公钥内容(通常以ssh-rsa、ssh-ed25519等开头):"
-            read -r ssh_public_key
-            
-            if [ -n "$ssh_public_key" ]; then
-                # 验证公钥格式
-                if [[ "$ssh_public_key" =~ ^(ssh-rsa|ssh-dss|ssh-ed25519|ecdsa-sha2-) ]]; then
-                    echo "$ssh_public_key" >> ~/.ssh/authorized_keys
-                    chmod 600 ~/.ssh/authorized_keys
-                    echo -e "\033[32m✓ SSH公钥已添加到authorized_keys\033[0m"
+            # 支持添加多个密钥
+            key_count=0
+            while true; do
+                echo ""
+                if [ $key_count -eq 0 ]; then
+                    echo "请输入您的SSH公钥内容(通常以ssh-rsa、ssh-ed25519等开头):"
                 else
-                    echo -e "\033[31m× 公钥格式无效（应以ssh-rsa、ssh-ed25519等开头）,操作取消\033[0m"
+                    echo "已添加 $key_count 个密钥"
+                    read -p "是否继续添加更多密钥?[y/N]: " add_more
+                    if [[ ! "$add_more" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+                        break
+                    fi
+                    echo "请输入下一个SSH公钥内容:"
+                fi
+                
+                echo "提示: 公钥通常来自本地机器的 ~/.ssh/id_rsa.pub 或 ~/.ssh/id_ed25519.pub"
+                echo "（输入空行跳过）"
+                read -r ssh_public_key
+                
+                # 如果输入为空且已经添加了至少一个密钥，退出循环
+                if [ -z "$ssh_public_key" ] && [ $key_count -gt 0 ]; then
+                    break
+                fi
+                
+                if [ -n "$ssh_public_key" ]; then
+                    # 验证公钥格式
+                    if [[ "$ssh_public_key" =~ ^(ssh-rsa|ssh-dss|ssh-ed25519|ecdsa-sha2-) ]]; then
+                        echo "$ssh_public_key" >> "$auth_keys_file"
+                        key_count=$((key_count + 1))
+                        
+                        # 提取密钥信息
+                        key_type=$(echo "$ssh_public_key" | awk '{print $1}')
+                        key_comment=$(echo "$ssh_public_key" | awk '{print $NF}')
+                        
+                        echo -e "\033[32m✓ 已添加密钥 #$key_count\033[0m"
+                        echo "  类型: $key_type"
+                        echo "  注释: $key_comment"
+                    else
+                        echo -e "\033[31m× 公钥格式无效（应以ssh-rsa、ssh-ed25519等开头）\033[0m"
+                        if [ $key_count -eq 0 ]; then
+                            read -p "是否重新输入?[Y/n]: " retry
+                            retry=${retry:-Y}
+                            if [[ ! "$retry" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+                                echo -e "\033[31m× 没有SSH密钥的情况下禁用密码登录是危险的,操作取消\033[0m"
+                                return 1
+                            fi
+                        fi
+                    fi
+                elif [ $key_count -eq 0 ]; then
+                    echo -e "\033[31m× 未输入有效的公钥,操作取消\033[0m"
                     return 1
                 fi
+            done
+            
+            if [ $key_count -gt 0 ]; then
+                chmod 600 "$auth_keys_file"
+                
+                echo ""
+                echo -e "\033[32m✓ 共添加了 $key_count 个SSH公钥到 $auth_keys_file\033[0m"
+                
+                # 显示最终的密钥列表
+                echo ""
+                echo "当前所有密钥:"
+                grep -E "^(ssh-rsa|ssh-dss|ssh-ed25519|ecdsa-sha2-)" "$auth_keys_file" | nl -w2 -s'. ' | while read line; do
+                    key_info=$(echo "$line" | sed 's/^[0-9]*\. //')
+                    key_type=$(echo "$key_info" | awk '{print $1}')
+                    key_comment=$(echo "$key_info" | awk '{print $NF}')
+                    echo "  $line"
+                    echo "     类型: $key_type, 注释: $key_comment"
+                done
             else
-                echo -e "\033[31m× 未输入有效的公钥,操作取消\033[0m"
+                echo -e "\033[31m× 没有添加任何密钥,操作取消\033[0m"
                 return 1
             fi
         else
@@ -495,12 +632,9 @@ ssh_security() {
         
         # 查找所有Include指令
         while IFS= read -r include_line; do
-            # 移除注释和前导空格
             include_path=$(echo "$include_line" | sed 's/^[[:space:]]*Include[[:space:]]*//' | sed 's/[[:space:]]*$//')
             
-            # 处理通配符
             if [[ "$include_path" == /* ]]; then
-                # 绝对路径
                 for file in $include_path; do
                     if [ -f "$file" ]; then
                         CONFIG_FILES+=("$file")
@@ -508,7 +642,6 @@ ssh_security() {
                     fi
                 done
             else
-                # 相对路径，相对于/etc/ssh
                 for file in /etc/ssh/$include_path; do
                     if [ -f "$file" ]; then
                         CONFIG_FILES+=("$file")
@@ -523,7 +656,6 @@ ssh_security() {
     if [ -d "$SSH_CONFIG_DIR" ]; then
         echo "检查配置目录: $SSH_CONFIG_DIR"
         while IFS= read -r -d '' file; do
-            # 只处理.conf文件
             if [[ "$file" == *.conf ]]; then
                 CONFIG_FILES+=("$file")
                 echo "  发现配置文件: $file"
@@ -531,12 +663,11 @@ ssh_security() {
         done < <(find "$SSH_CONFIG_DIR" -type f -print0 2>/dev/null)
     fi
     
-    # 检查云服务商特定配置（常见的会覆盖配置的文件）
+    # 检查云服务商特定配置
     CLOUD_CONFIGS=(
         "/etc/ssh/sshd_config.d/50-cloud-init.conf"
         "/etc/ssh/sshd_config.d/60-cloudimg-settings.conf"
         "/etc/ssh/sshd_config.d/50-cloudimg-settings.conf"
-        "/etc/ssh/ssh_config.d/50-cloud-init.conf"
     )
     
     for cloud_config in "${CLOUD_CONFIGS[@]}"; do
@@ -556,35 +687,17 @@ ssh_security() {
         if [ -f "$config_file" ]; then
             echo "文件: $config_file"
             
-            # 检查PasswordAuthentication设置
             pass_auth=$(grep -i "^[[:space:]]*PasswordAuthentication" "$config_file" 2>/dev/null | tail -1)
-            if [ -n "$pass_auth" ]; then
-                echo "  PasswordAuthentication: $pass_auth"
-            fi
+            [ -n "$pass_auth" ] && echo "  PasswordAuthentication: $pass_auth"
             
-            # 检查PubkeyAuthentication设置
             pubkey_auth=$(grep -i "^[[:space:]]*PubkeyAuthentication" "$config_file" 2>/dev/null | tail -1)
-            if [ -n "$pubkey_auth" ]; then
-                echo "  PubkeyAuthentication: $pubkey_auth"
-            fi
+            [ -n "$pubkey_auth" ] && echo "  PubkeyAuthentication: $pubkey_auth"
             
-            # 检查ChallengeResponseAuthentication
             challenge_auth=$(grep -i "^[[:space:]]*ChallengeResponseAuthentication" "$config_file" 2>/dev/null | tail -1)
-            if [ -n "$challenge_auth" ]; then
-                echo "  ChallengeResponseAuthentication: $challenge_auth"
-            fi
+            [ -n "$challenge_auth" ] && echo "  ChallengeResponseAuthentication: $challenge_auth"
             
-            # 检查UsePAM
-            use_pam=$(grep -i "^[[:space:]]*UsePAM" "$config_file" 2>/dev/null | tail -1)
-            if [ -n "$use_pam" ]; then
-                echo "  UsePAM: $use_pam"
-            fi
-            
-            # 检查KbdInteractiveAuthentication (新版本SSH)
             kbd_auth=$(grep -i "^[[:space:]]*KbdInteractiveAuthentication" "$config_file" 2>/dev/null | tail -1)
-            if [ -n "$kbd_auth" ]; then
-                echo "  KbdInteractiveAuthentication: $kbd_auth"
-            fi
+            [ -n "$kbd_auth" ] && echo "  KbdInteractiveAuthentication: $kbd_auth"
             
             echo ""
         fi
@@ -619,21 +732,18 @@ ssh_security() {
         fi
     done
     
-    # 应用安全配置的函数
+    # 应用安全配置
     apply_security_config() {
         local file=$1
         local tmpfile=$(mktemp)
         
-        # 复制原文件到临时文件
         cp "$file" "$tmpfile"
         
-        # 注释掉或删除现有的相关配置
         sed -i 's/^[[:space:]]*PasswordAuthentication.*/#&/' "$tmpfile"
         sed -i 's/^[[:space:]]*PubkeyAuthentication.*/#&/' "$tmpfile"
         sed -i 's/^[[:space:]]*ChallengeResponseAuthentication.*/#&/' "$tmpfile"
         sed -i 's/^[[:space:]]*KbdInteractiveAuthentication.*/#&/' "$tmpfile"
         
-        # 在文件末尾添加安全配置
         cat >> "$tmpfile" << EOF
 
 # Security configuration applied on $(date)
@@ -644,11 +754,9 @@ ChallengeResponseAuthentication no
 KbdInteractiveAuthentication no
 EOF
         
-        # 替换原文件
         mv "$tmpfile" "$file"
     }
     
-    # 应用配置到所有文件
     echo ""
     echo "========== 应用安全配置 =========="
     for config_file in "${CONFIG_FILES[@]}"; do
@@ -659,7 +767,7 @@ EOF
         fi
     done
     
-    # 特殊处理：禁用cloud-init的SSH配置重置
+    # 特殊处理cloud-init
     CLOUD_INIT_CONFIG="/etc/cloud/cloud.cfg"
     if [ -f "$CLOUD_INIT_CONFIG" ]; then
         echo ""
@@ -676,14 +784,13 @@ EOF
         fi
     fi
     
-    # 测试SSH配置
+    # 测试配置
     echo ""
     echo "========== 测试配置 =========="
     echo "测试SSH配置语法..."
     if sshd -t 2>/dev/null; then
         echo -e "\033[32m✓ SSH配置语法正确\033[0m"
         
-        # 显示最终生效的配置
         echo ""
         echo "========== 验证最终配置 =========="
         echo "检查sshd实际会使用的配置:"
@@ -702,7 +809,6 @@ EOF
         restart_confirm=${restart_confirm:-Y}
         
         if [[ "$restart_confirm" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-            # 重启SSH服务
             echo "重启SSH服务..."
             systemctl restart sshd
             
@@ -718,17 +824,10 @@ EOF
                 echo ""
                 echo -e "\033[31m重要提醒:\033[0m"
                 echo "1. 请不要关闭当前SSH连接"
-                echo "2. 请在新终端中测试SSH密钥登录"
+                echo "2. 请在新终端中测试SSH密钥登录:"
+                echo "   ssh -i ~/.ssh/your_key $target_user@服务器IP"
                 echo "3. 确认可以正常登录后再关闭当前会话"
                 echo "4. 如需回滚，可从 $BACKUP_DIR 恢复配置"
-                echo ""
-                echo "回滚命令:"
-                for config_file in "${CONFIG_FILES[@]}"; do
-                    if [ -f "$config_file" ]; then
-                        echo "  cp $BACKUP_DIR/$(basename $config_file) $config_file"
-                    fi
-                done
-                echo "  systemctl restart sshd"
             else
                 echo -e "\033[31m× SSH服务重启失败\033[0m"
                 echo "正在恢复配置..."
@@ -742,7 +841,6 @@ EOF
             fi
         else
             echo "已取消重启SSH服务"
-            echo "您可以稍后手动执行: systemctl restart sshd"
         fi
     else
         echo -e "\033[31m× SSH配置语法错误\033[0m"
@@ -758,11 +856,6 @@ EOF
         return 1
     fi
 }
-
-# 如果直接运行此脚本（而不是source），则执行函数
-if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
-    ssh_security
-fi
 
 #安装ufw-docker
 add_ufw_docker_rules() {
