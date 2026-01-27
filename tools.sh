@@ -29,7 +29,7 @@ echo -e "${plain}"
 
 
 # 版本号
-VERSION="1.0"	
+VERSION="1.1"	
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -417,6 +417,7 @@ ssh_security() {
     echo "此功能将会:"
     echo "1. 禁用SSH密码登录"
     echo "2. 启用SSH密钥登录"
+    echo "3. 检查并处理所有可能覆盖配置的文件"
     echo ""
     echo -e "\033[31m警告: 在继续之前,请确保您已经设置了SSH密钥!\033[0m"
     echo -e "\033[31m如果没有密钥,您可能会失去服务器访问权限!\033[0m"
@@ -452,11 +453,124 @@ ssh_security() {
         echo -e "\033[32m✓ 检测到已存在SSH密钥\033[0m"
     fi
     
-    # 最终确认
+    # 检测所有可能的SSH配置文件
     echo ""
+    echo "========== 检测SSH配置文件 =========="
+    
+    SSH_MAIN_CONFIG="/etc/ssh/sshd_config"
+    SSH_CONFIG_DIR="/etc/ssh/sshd_config.d"
+    
+    # 存储所有需要处理的配置文件
+    declare -a CONFIG_FILES=("$SSH_MAIN_CONFIG")
+    
+    # 检查主配置文件是否包含Include指令
+    if [ -f "$SSH_MAIN_CONFIG" ]; then
+        echo "检查主配置文件: $SSH_MAIN_CONFIG"
+        
+        # 查找所有Include指令
+        while IFS= read -r include_line; do
+            # 移除注释和前导空格
+            include_path=$(echo "$include_line" | sed 's/^[[:space:]]*Include[[:space:]]*//' | sed 's/[[:space:]]*$//')
+            
+            # 处理通配符
+            if [[ "$include_path" == /* ]]; then
+                # 绝对路径
+                for file in $include_path; do
+                    if [ -f "$file" ]; then
+                        CONFIG_FILES+=("$file")
+                        echo "  发现Include文件: $file"
+                    fi
+                done
+            else
+                # 相对路径，相对于/etc/ssh
+                for file in /etc/ssh/$include_path; do
+                    if [ -f "$file" ]; then
+                        CONFIG_FILES+=("$file")
+                        echo "  发现Include文件: $file"
+                    fi
+                done
+            fi
+        done < <(grep -i "^[[:space:]]*Include" "$SSH_MAIN_CONFIG" 2>/dev/null)
+    fi
+    
+    # 检查默认的sshd_config.d目录
+    if [ -d "$SSH_CONFIG_DIR" ]; then
+        echo "检查配置目录: $SSH_CONFIG_DIR"
+        while IFS= read -r -d '' file; do
+            # 只处理.conf文件
+            if [[ "$file" == *.conf ]]; then
+                CONFIG_FILES+=("$file")
+                echo "  发现配置文件: $file"
+            fi
+        done < <(find "$SSH_CONFIG_DIR" -type f -print0 2>/dev/null)
+    fi
+    
+    # 检查云服务商特定配置（常见的会覆盖配置的文件）
+    CLOUD_CONFIGS=(
+        "/etc/ssh/sshd_config.d/50-cloud-init.conf"
+        "/etc/ssh/sshd_config.d/60-cloudimg-settings.conf"
+        "/etc/ssh/sshd_config.d/50-cloudimg-settings.conf"
+        "/etc/ssh/ssh_config.d/50-cloud-init.conf"
+    )
+    
+    for cloud_config in "${CLOUD_CONFIGS[@]}"; do
+        if [ -f "$cloud_config" ] && [[ ! " ${CONFIG_FILES[@]} " =~ " ${cloud_config} " ]]; then
+            CONFIG_FILES+=("$cloud_config")
+            echo "  发现云服务商配置: $cloud_config"
+        fi
+    done
+    
+    echo ""
+    echo "共发现 ${#CONFIG_FILES[@]} 个配置文件需要处理"
+    
+    # 显示当前相关配置状态
+    echo ""
+    echo "========== 当前配置状态 =========="
+    for config_file in "${CONFIG_FILES[@]}"; do
+        if [ -f "$config_file" ]; then
+            echo "文件: $config_file"
+            
+            # 检查PasswordAuthentication设置
+            pass_auth=$(grep -i "^[[:space:]]*PasswordAuthentication" "$config_file" 2>/dev/null | tail -1)
+            if [ -n "$pass_auth" ]; then
+                echo "  PasswordAuthentication: $pass_auth"
+            fi
+            
+            # 检查PubkeyAuthentication设置
+            pubkey_auth=$(grep -i "^[[:space:]]*PubkeyAuthentication" "$config_file" 2>/dev/null | tail -1)
+            if [ -n "$pubkey_auth" ]; then
+                echo "  PubkeyAuthentication: $pubkey_auth"
+            fi
+            
+            # 检查ChallengeResponseAuthentication
+            challenge_auth=$(grep -i "^[[:space:]]*ChallengeResponseAuthentication" "$config_file" 2>/dev/null | tail -1)
+            if [ -n "$challenge_auth" ]; then
+                echo "  ChallengeResponseAuthentication: $challenge_auth"
+            fi
+            
+            # 检查UsePAM
+            use_pam=$(grep -i "^[[:space:]]*UsePAM" "$config_file" 2>/dev/null | tail -1)
+            if [ -n "$use_pam" ]; then
+                echo "  UsePAM: $use_pam"
+            fi
+            
+            # 检查KbdInteractiveAuthentication (新版本SSH)
+            kbd_auth=$(grep -i "^[[:space:]]*KbdInteractiveAuthentication" "$config_file" 2>/dev/null | tail -1)
+            if [ -n "$kbd_auth" ]; then
+                echo "  KbdInteractiveAuthentication: $kbd_auth"
+            fi
+            
+            echo ""
+        fi
+    done
+    
+    # 最终确认
     echo "即将进行以下配置:"
     echo "- 禁用密码登录"
     echo "- 启用公钥认证"
+    echo "- 禁用挑战响应认证"
+    echo "- 禁用键盘交互认证"
+    echo "- 处理所有检测到的配置文件"
     echo ""
     read -p "确认继续?[y/N]: " final_confirm
     
@@ -465,58 +579,157 @@ ssh_security() {
         return 0
     fi
     
-    # 备份原始SSH配置
-    if [ ! -f "/etc/ssh/sshd_config.bak" ]; then
-        echo "备份原始SSH配置..."
-        cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
-    fi
+    # 备份所有配置文件
+    echo ""
+    echo "========== 备份配置文件 =========="
+    BACKUP_DIR="/etc/ssh/backup_$(date +%Y%m%d_%H%M%S)"
+    mkdir -p "$BACKUP_DIR"
     
-    # 应用SSH安全配置
-    echo "正在应用SSH安全配置..."
+    for config_file in "${CONFIG_FILES[@]}"; do
+        if [ -f "$config_file" ]; then
+            backup_file="$BACKUP_DIR/$(basename $config_file)"
+            cp "$config_file" "$backup_file"
+            echo "已备份: $config_file -> $backup_file"
+        fi
+    done
     
-    SSH_CONFIG="/etc/ssh/sshd_config"
+    # 应用安全配置的函数
+    apply_security_config() {
+        local file=$1
+        local tmpfile=$(mktemp)
+        
+        # 复制原文件到临时文件
+        cp "$file" "$tmpfile"
+        
+        # 注释掉或删除现有的相关配置
+        sed -i 's/^[[:space:]]*PasswordAuthentication.*/#&/' "$tmpfile"
+        sed -i 's/^[[:space:]]*PubkeyAuthentication.*/#&/' "$tmpfile"
+        sed -i 's/^[[:space:]]*ChallengeResponseAuthentication.*/#&/' "$tmpfile"
+        sed -i 's/^[[:space:]]*KbdInteractiveAuthentication.*/#&/' "$tmpfile"
+        
+        # 在文件末尾添加安全配置
+        cat >> "$tmpfile" << EOF
+
+# Security configuration applied on $(date)
+# Added by ssh_security() function
+PasswordAuthentication no
+PubkeyAuthentication yes
+ChallengeResponseAuthentication no
+KbdInteractiveAuthentication no
+EOF
+        
+        # 替换原文件
+        mv "$tmpfile" "$file"
+    }
     
-    # 禁用密码认证
-    sed -i 's/^#*PasswordAuthentication .*/PasswordAuthentication no/' $SSH_CONFIG
-    if ! grep -q "^PasswordAuthentication" $SSH_CONFIG; then
-        echo "PasswordAuthentication no" >> $SSH_CONFIG
-    fi
+    # 应用配置到所有文件
+    echo ""
+    echo "========== 应用安全配置 =========="
+    for config_file in "${CONFIG_FILES[@]}"; do
+        if [ -f "$config_file" ]; then
+            echo "处理: $config_file"
+            apply_security_config "$config_file"
+            echo -e "\033[32m✓ 已配置\033[0m"
+        fi
+    done
     
-    # 启用公钥认证
-    sed -i 's/^#*PubkeyAuthentication .*/PubkeyAuthentication yes/' $SSH_CONFIG
-    if ! grep -q "^PubkeyAuthentication" $SSH_CONFIG; then
-        echo "PubkeyAuthentication yes" >> $SSH_CONFIG
+    # 特殊处理：禁用cloud-init的SSH配置重置
+    CLOUD_INIT_CONFIG="/etc/cloud/cloud.cfg"
+    if [ -f "$CLOUD_INIT_CONFIG" ]; then
+        echo ""
+        echo "检测到cloud-init配置文件"
+        if grep -q "ssh_pwauth" "$CLOUD_INIT_CONFIG" 2>/dev/null; then
+            read -p "是否禁用cloud-init的SSH密码认证管理?[Y/n]: " disable_cloud_init
+            disable_cloud_init=${disable_cloud_init:-Y}
+            
+            if [[ "$disable_cloud_init" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+                cp "$CLOUD_INIT_CONFIG" "$BACKUP_DIR/cloud.cfg"
+                sed -i 's/^ssh_pwauth:.*$/ssh_pwauth: false/' "$CLOUD_INIT_CONFIG"
+                echo -e "\033[32m✓ 已禁用cloud-init的SSH密码认证\033[0m"
+            fi
+        fi
     fi
     
     # 测试SSH配置
+    echo ""
+    echo "========== 测试配置 =========="
     echo "测试SSH配置语法..."
-    if sshd -t; then
+    if sshd -t 2>/dev/null; then
         echo -e "\033[32m✓ SSH配置语法正确\033[0m"
         
-        # 重启SSH服务
-        echo "重启SSH服务..."
-        systemctl restart sshd
+        # 显示最终生效的配置
+        echo ""
+        echo "========== 验证最终配置 =========="
+        echo "检查sshd实际会使用的配置:"
+        sshd -T 2>/dev/null | grep -E "^(passwordauthentication|pubkeyauthentication|challengeresponseauthentication|kbdinteractiveauthentication)" | while read line; do
+            if [[ "$line" =~ "yes" && "$line" =~ "password" ]]; then
+                echo -e "\033[33m  $line\033[0m"
+            elif [[ "$line" =~ "no" && "$line" =~ "pubkey" ]]; then
+                echo -e "\033[33m  $line\033[0m"
+            else
+                echo "  $line"
+            fi
+        done
         
-        if systemctl is-active --quiet sshd; then
-            echo -e "\033[32m✓ SSH服务重启成功\033[0m"
-            echo ""
-            echo "========== 配置完成 =========="
-            echo -e "\033[32m✓ SSH密码登录已禁用\033[0m"
-            echo -e "\033[32m✓ SSH密钥登录已启用\033[0m"
-            echo ""
-            echo -e "\033[31m重要提醒:\033[0m"
-            echo "1. 请不要关闭当前SSH连接"
-            echo "2. 请在新终端中测试SSH密钥登录"
-            echo "3. 确认可以正常登录后再关闭当前会话"
-        else
-            echo -e "\033[31m× SSH服务重启失败\033[0m"
-            echo "恢复原始配置..."
-            cp /etc/ssh/sshd_config.bak /etc/ssh/sshd_config
+        echo ""
+        read -p "配置看起来正确吗？是否重启SSH服务?[Y/n]: " restart_confirm
+        restart_confirm=${restart_confirm:-Y}
+        
+        if [[ "$restart_confirm" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+            # 重启SSH服务
+            echo "重启SSH服务..."
             systemctl restart sshd
+            
+            if systemctl is-active --quiet sshd; then
+                echo -e "\033[32m✓ SSH服务重启成功\033[0m"
+                echo ""
+                echo "========== 配置完成 =========="
+                echo -e "\033[32m✓ SSH密码登录已禁用\033[0m"
+                echo -e "\033[32m✓ SSH密钥登录已启用\033[0m"
+                echo -e "\033[32m✓ 已处理所有配置文件\033[0m"
+                echo ""
+                echo "备份文件位置: $BACKUP_DIR"
+                echo ""
+                echo -e "\033[31m重要提醒:\033[0m"
+                echo "1. 请不要关闭当前SSH连接"
+                echo "2. 请在新终端中测试SSH密钥登录"
+                echo "3. 确认可以正常登录后再关闭当前会话"
+                echo "4. 如需回滚，可从 $BACKUP_DIR 恢复配置"
+                echo ""
+                echo "回滚命令:"
+                for config_file in "${CONFIG_FILES[@]}"; do
+                    if [ -f "$config_file" ]; then
+                        echo "  cp $BACKUP_DIR/$(basename $config_file) $config_file"
+                    fi
+                done
+                echo "  systemctl restart sshd"
+            else
+                echo -e "\033[31m× SSH服务重启失败\033[0m"
+                echo "正在恢复配置..."
+                for config_file in "${CONFIG_FILES[@]}"; do
+                    if [ -f "$BACKUP_DIR/$(basename $config_file)" ]; then
+                        cp "$BACKUP_DIR/$(basename $config_file)" "$config_file"
+                    fi
+                done
+                systemctl restart sshd
+                echo "已恢复原始配置"
+            fi
+        else
+            echo "已取消重启SSH服务"
+            echo "您可以稍后手动执行: systemctl restart sshd"
         fi
     else
-        echo -e "\033[31m× SSH配置语法错误,恢复原始配置\033[0m"
-        cp /etc/ssh/sshd_config.bak /etc/ssh/sshd_config
+        echo -e "\033[31m× SSH配置语法错误\033[0m"
+        sshd -t
+        echo ""
+        echo "正在恢复配置..."
+        for config_file in "${CONFIG_FILES[@]}"; do
+            if [ -f "$BACKUP_DIR/$(basename $config_file)" ]; then
+                cp "$BACKUP_DIR/$(basename $config_file)" "$config_file"
+            fi
+        done
+        echo "已恢复原始配置"
+        return 1
     fi
 }
 
