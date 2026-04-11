@@ -29,7 +29,7 @@ echo -e "${plain}"
 
 
 # 版本号
-VERSION="2.0"	
+VERSION="1.0"	
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -642,10 +642,11 @@ reinstall_os() {
     echo "请选择系统:"
     echo "1. Debian"
     echo "2. Ubuntu"
+    echo "3. CentOS"
     echo "0. 返回"
     read -p "请选择 [1]: " os_choice
     os_choice=${os_choice:-1}
-    
+
     case $os_choice in
         1)
             echo ""
@@ -676,6 +677,10 @@ reinstall_os() {
                 3) OS_NAME="ubuntu" && OS_VER="20.04" ;;
                 *) echo "无效选项"; return 1 ;;
             esac
+            ;;
+        3)
+            OS_NAME="centos" && OS_VER="9"
+            echo "已选择: CentOS 9 Stream"
             ;;
         0)
             return 0
