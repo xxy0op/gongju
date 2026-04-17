@@ -29,7 +29,7 @@ echo -e "${plain}"
 
 
 # 版本号
-VERSION="1.0"	
+VERSION="2.0"	
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -320,6 +320,47 @@ nxtrace() {
 #安装realm脚本
 realm() {
     bash <(curl -sL download.tapby.de/realm/install.sh)
+}
+
+# nft端口转发管理
+nft_forward() {
+    while true; do
+        echo "===== NFT 端口转发管理 (tcp+udp) ====="
+        echo "1. 添加转发规则"
+        echo "2. 删除转发规则"
+        echo "3. 查看所有规则"
+        echo "4. 重新加载规则"
+        echo "5. 清空所有规则"
+        echo "6. 安装并启用开机自启"
+        echo "7. 卸载服务"
+        echo "0. 返回"
+        read -p "请选择一个选项:" nft_choice
+        case $nft_choice in
+            1)
+                read -p "请输入规则 (格式: 监听端口 目标ip:端口，多条用空格分隔): " -a nft_args
+                if [[ ${#nft_args[@]} -ge 2 ]]; then
+                    nft a "${nft_args[@]}"
+                else
+                    echo "格式错误，示例: 8080 10.0.0.1:80 2222 10.0.0.2:22"
+                fi
+                ;;
+            2)
+                read -p "请输入要删除的监听端口 (多个用空格分隔): " -a del_ports
+                if [[ ${#del_ports[@]} -ge 1 ]]; then
+                    nft d "${del_ports[@]}"
+                else
+                    echo "请输入至少一个端口"
+                fi
+                ;;
+            3) nft l ;;
+            4) nft r ;;
+            5) nft f ;;
+            6) nft i ;;
+            7) nft u ;;
+            0) break ;;
+            *) echo "无效选项。" ;;
+        esac
+    done
 }
 
 # 安装DDNS脚本
@@ -642,11 +683,10 @@ reinstall_os() {
     echo "请选择系统:"
     echo "1. Debian"
     echo "2. Ubuntu"
-    echo "3. CentOS"
     echo "0. 返回"
     read -p "请选择 [1]: " os_choice
     os_choice=${os_choice:-1}
-
+    
     case $os_choice in
         1)
             echo ""
@@ -677,10 +717,6 @@ reinstall_os() {
                 3) OS_NAME="ubuntu" && OS_VER="20.04" ;;
                 *) echo "无效选项"; return 1 ;;
             esac
-            ;;
-        3)
-            OS_NAME="centos" && OS_VER="9"
-            echo "已选择: CentOS 9 Stream"
             ;;
         0)
             return 0
@@ -757,6 +793,7 @@ display_network_tools_menu() {
 	echo "5. install Nxtrace"
 	echo "6. install Realm"
 	echo "7. install ddns"
+	echo "8. NFT Port Forward"
     echo "0. return"
 }
 
@@ -796,6 +833,7 @@ while true; do
 					5) nxtrace ;; #调用 nxtrace 函数
 					6) realm ;; #调用 realm 函数
 					7) ddns ;; #调用 ddns 函数
+					8) nft_forward ;; #调用 nft端口转发 函数
                     0) break ;;  # 返回上一层菜单
                     *) echo "无效选项。" ;;  # 输入无效选项的提示
                 esac
