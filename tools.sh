@@ -29,7 +29,7 @@ echo -e "${plain}"
 
 
 # 版本号
-VERSION="2.0"	
+VERSION="2.1"	
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -323,7 +323,160 @@ realm() {
 }
 
 # nft端口转发管理
+NFT_CONF="/etc/nft-forward.conf"
+NFT_TABLE="port_forward"
+NFT_SERVICE_NAME="nft-forward"
+NFT_SERVICE_FILE="/etc/systemd/system/${NFT_SERVICE_NAME}.service"
+
+# 安装 nftables + 开机自启 (幂等)
+nft_install() {
+    if ! command -v nft &>/dev/null; then
+        echo "* nftables 未安装，正在安装..."
+        if command -v apt-get &>/dev/null; then
+            apt-get update -qq && apt-get install -y -qq nftables
+        elif command -v yum &>/dev/null; then
+            yum install -y nftables
+        elif command -v dnf &>/dev/null; then
+            dnf install -y nftables
+        elif command -v pacman &>/dev/null; then
+            pacman -Sy --noconfirm nftables
+        else
+            echo "x 无法识别包管理器，请手动安装 nftables"
+            return 1
+        fi
+        systemctl enable --now nftables 2>/dev/null || true
+        echo "* nftables 安装完成"
+    fi
+
+    [[ -f "$NFT_CONF" ]] || touch "$NFT_CONF"
+
+    if [[ ! -f "$NFT_SERVICE_FILE" ]]; then
+        cat > "$NFT_SERVICE_FILE" <<'UNIT'
+[Unit]
+Description=nft port forward rules
+After=network.target nftables.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c 'NFT_CONF=/etc/nft-forward.conf; NFT_TABLE=port_forward; rules=""; while IFS=" " read -r port target; do [ -z "$port" ] || [ "${port:0:1}" = "#" ] && continue; rules+="        tcp dport $port dnat to $target\n        udp dport $port dnat to $target\n"; done < "$NFT_CONF"; printf "table ip %s\ndelete table ip %s\ntable ip %s {\n    chain prerouting {\n        type nat hook prerouting priority -100; policy accept;\n%b    }\n    chain postrouting {\n        type nat hook postrouting priority 100; policy accept;\n        masquerade\n    }\n}\n" "$NFT_TABLE" "$NFT_TABLE" "$NFT_TABLE" "$rules" | nft -f -'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+        systemctl daemon-reload
+        systemctl enable "$NFT_SERVICE_NAME"
+        echo "* 开机自启已启用"
+    fi
+}
+
+# 生成并应用 nftables 规则
+nft_apply() {
+    local rules=""
+    while IFS=' ' read -r port target; do
+        [[ -z "$port" || "$port" == \#* ]] && continue
+        rules+="        tcp dport $port dnat to $target
+"
+        rules+="        udp dport $port dnat to $target
+"
+    done < "$NFT_CONF"
+
+    nft -f - <<EOF
+table ip $NFT_TABLE
+delete table ip $NFT_TABLE
+table ip $NFT_TABLE {
+    chain prerouting {
+        type nat hook prerouting priority -100; policy accept;
+$rules    }
+    chain postrouting {
+        type nat hook postrouting priority 100; policy accept;
+        masquerade
+    }
+}
+EOF
+}
+
+# 添加转发规则
+nft_add() {
+    local added=0
+    while (( $# >= 2 )); do
+        local port="$1" target="$2"; shift 2
+
+        if ! [[ "$port" =~ ^[0-9]+$ ]] || (( port < 1 || port > 65535 )); then
+            echo "x 无效端口: $port"; continue
+        fi
+        if ! [[ "$target" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+$ ]]; then
+            echo "x 无效目标: $target (格式: ip:port)"; continue
+        fi
+        if grep -qE "^${port}\s" "$NFT_CONF" 2>/dev/null; then
+            echo "- 端口 $port 已存在，跳过"; continue
+        fi
+
+        echo "$port $target" >> "$NFT_CONF"
+        echo "+ $port -> $target"
+        ((added++))
+    done
+
+    if (( added > 0 )); then
+        nft_apply
+        echo "* 已应用 $added 条规则"
+    fi
+}
+
+# 删除转发规则
+nft_del() {
+    local deleted=0
+    for port in "$@"; do
+        if grep -qE "^${port}\s" "$NFT_CONF" 2>/dev/null; then
+            sed -i "/^${port}\s/d" "$NFT_CONF"
+            echo "- 已删除端口 $port"
+            ((deleted++))
+        else
+            echo "x 端口 $port 不存在"
+        fi
+    done
+
+    if (( deleted > 0 )); then
+        nft_apply
+        echo "* 已更新规则"
+    fi
+}
+
+# 列出转发规则
+nft_list() {
+    if [[ ! -s "$NFT_CONF" ]]; then
+        echo "(空)"
+        return
+    fi
+    printf "%-8s  %-8s  %s\n" "协议" "监听" "目标"
+    printf "%-8s  %-8s  %s\n" "------" "------" "----"
+    while IFS=' ' read -r port target; do
+        [[ -z "$port" || "$port" == \#* ]] && continue
+        printf "%-8s  %-8s  %s\n" "tcp+udp" "$port" "$target"
+    done < "$NFT_CONF"
+}
+
+# 清空所有规则
+nft_flush() {
+    nft delete table ip $NFT_TABLE 2>/dev/null && echo "* nftables 规则已清空" || echo "* 无活跃规则"
+    > "$NFT_CONF"
+    echo "* 配置文件已清空"
+}
+
+# 卸载服务
+nft_uninstall() {
+    systemctl disable "$NFT_SERVICE_NAME" 2>/dev/null || true
+    rm -f "$NFT_SERVICE_FILE"
+    systemctl daemon-reload
+    nft delete table ip $NFT_TABLE 2>/dev/null || true
+    echo "* 服务已卸载，nftables 规则已清空"
+    echo "* 配置文件保留在 $NFT_CONF，如需删除请手动执行: rm $NFT_CONF"
+}
+
 nft_forward() {
+    # 进入自动安装 nftables + 启用开机自启
+    nft_install
+
     while true; do
         echo "===== NFT 端口转发管理 (tcp+udp) ====="
         echo "1. 添加转发规则"
@@ -331,15 +484,14 @@ nft_forward() {
         echo "3. 查看所有规则"
         echo "4. 重新加载规则"
         echo "5. 清空所有规则"
-        echo "6. 安装并启用开机自启"
-        echo "7. 卸载服务"
+        echo "6. 卸载服务"
         echo "0. 返回"
         read -p "请选择一个选项:" nft_choice
         case $nft_choice in
             1)
                 read -p "请输入规则 (格式: 监听端口 目标ip:端口，多条用空格分隔): " -a nft_args
                 if [[ ${#nft_args[@]} -ge 2 ]]; then
-                    nft a "${nft_args[@]}"
+                    nft_add "${nft_args[@]}"
                 else
                     echo "格式错误，示例: 8080 10.0.0.1:80 2222 10.0.0.2:22"
                 fi
@@ -347,16 +499,15 @@ nft_forward() {
             2)
                 read -p "请输入要删除的监听端口 (多个用空格分隔): " -a del_ports
                 if [[ ${#del_ports[@]} -ge 1 ]]; then
-                    nft d "${del_ports[@]}"
+                    nft_del "${del_ports[@]}"
                 else
                     echo "请输入至少一个端口"
                 fi
                 ;;
-            3) nft l ;;
-            4) nft r ;;
-            5) nft f ;;
-            6) nft i ;;
-            7) nft u ;;
+            3) nft_list ;;
+            4) nft_apply && echo "* 规则已重新加载" ;;
+            5) nft_flush ;;
+            6) nft_uninstall ;;
             0) break ;;
             *) echo "无效选项。" ;;
         esac
