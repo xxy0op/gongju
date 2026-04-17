@@ -29,7 +29,7 @@ echo -e "${plain}"
 
 
 # 版本号
-VERSION="2.1"	
+VERSION="2.2"	
 
 # 获取当前脚本的路径
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd -P)"
@@ -358,7 +358,7 @@ After=network.target nftables.service
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c 'NFT_CONF=/etc/nft-forward.conf; NFT_TABLE=port_forward; rules=""; while IFS=" " read -r port target; do [ -z "$port" ] || [ "${port:0:1}" = "#" ] && continue; rules+="        tcp dport $port dnat to $target\n        udp dport $port dnat to $target\n"; done < "$NFT_CONF"; printf "table ip %s\ndelete table ip %s\ntable ip %s {\n    chain prerouting {\n        type nat hook prerouting priority -100; policy accept;\n%b    }\n    chain postrouting {\n        type nat hook postrouting priority 100; policy accept;\n        masquerade\n    }\n}\n" "$NFT_TABLE" "$NFT_TABLE" "$NFT_TABLE" "$rules" | nft -f -'
+ExecStart=/bin/bash -c 'NFT_CONF=/etc/nft-forward.conf; NFT_TABLE=port_forward; rules=""; while read -r port target _rest; do [ -z "$port" ] || [ "${port:0:1}" = "#" ] && continue; rules+="        tcp dport $port dnat to $target\n        udp dport $port dnat to $target\n"; done < "$NFT_CONF"; printf "table ip %s\ndelete table ip %s\ntable ip %s {\n    chain prerouting {\n        type nat hook prerouting priority -100; policy accept;\n%b    }\n    chain postrouting {\n        type nat hook postrouting priority 100; policy accept;\n        masquerade\n    }\n}\n" "$NFT_TABLE" "$NFT_TABLE" "$NFT_TABLE" "$rules" | nft -f -'
 RemainAfterExit=yes
 
 [Install]
@@ -373,7 +373,7 @@ UNIT
 # 生成并应用 nftables 规则
 nft_apply() {
     local rules=""
-    while IFS=' ' read -r port target; do
+    while read -r port target _name; do
         [[ -z "$port" || "$port" == \#* ]] && continue
         rules+="        tcp dport $port dnat to $target
 "
@@ -396,8 +396,10 @@ $rules    }
 EOF
 }
 
-# 添加转发规则
+# 添加转发规则  参数: <备注名> <端口> <目标> [<端口> <目标> ...]
 nft_add() {
+    local name="$1"; shift
+
     local added=0
     while (( $# >= 2 )); do
         local port="$1" target="$2"; shift 2
@@ -412,8 +414,8 @@ nft_add() {
             echo "- 端口 $port 已存在，跳过"; continue
         fi
 
-        echo "$port $target" >> "$NFT_CONF"
-        echo "+ $port -> $target"
+        echo "$port $target $name" >> "$NFT_CONF"
+        echo "+ [$name] $port -> $target"
         ((added++))
     done
 
@@ -448,11 +450,11 @@ nft_list() {
         echo "(空)"
         return
     fi
-    printf "%-8s  %-8s  %s\n" "协议" "监听" "目标"
-    printf "%-8s  %-8s  %s\n" "------" "------" "----"
-    while IFS=' ' read -r port target; do
+    printf "%-12s  %-8s  %-8s  %s\n" "备注" "协议" "监听" "目标"
+    printf "%-12s  %-8s  %-8s  %s\n" "------" "------" "------" "----"
+    while read -r port target name; do
         [[ -z "$port" || "$port" == \#* ]] && continue
-        printf "%-8s  %-8s  %s\n" "tcp+udp" "$port" "$target"
+        printf "%-12s  %-8s  %-8s  %s\n" "${name:--}" "tcp+udp" "$port" "$target"
     done < "$NFT_CONF"
 }
 
@@ -489,9 +491,13 @@ nft_forward() {
         read -p "请选择一个选项:" nft_choice
         case $nft_choice in
             1)
+                read -p "请输入备注名 (如: 香港节点): " nft_name
+                if [[ -z "$nft_name" ]]; then
+                    echo "备注名不能为空"; continue
+                fi
                 read -p "请输入规则 (格式: 监听端口 目标ip:端口，多条用空格分隔): " -a nft_args
                 if [[ ${#nft_args[@]} -ge 2 ]]; then
-                    nft_add "${nft_args[@]}"
+                    nft_add "$nft_name" "${nft_args[@]}"
                 else
                     echo "格式错误，示例: 8080 10.0.0.1:80 2222 10.0.0.2:22"
                 fi
