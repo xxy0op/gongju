@@ -107,7 +107,7 @@ conf_get_line() {
     local idx=0
     while read -r port target name; do
         [[ -z "$port" || "$port" == \#* ]] && continue
-        ((idx++))
+        ((idx++)) || true
         if (( idx == $1 )); then
             echo "$port $target $name"
             return
@@ -145,7 +145,7 @@ nft_add() {
 
         echo "$port $target $name" >> "$NFT_CONF"
         echo "+ [$name] $port -> $target"
-        ((added++))
+        ((added++)) || true
     done
 
     if (( added > 0 )); then
@@ -181,7 +181,7 @@ nft_del() {
         # 精确删除该行
         sed -i "/^${port} ${target}/d" "$NFT_CONF"
         echo "- [#$id] [$name] $port -> $target 已删除"
-        ((deleted++))
+        ((deleted++)) || true
     done
 
     if (( deleted > 0 )); then
@@ -202,7 +202,7 @@ nft_list() {
     local idx=0
     while read -r port target name; do
         [[ -z "$port" || "$port" == \#* ]] && continue
-        ((idx++))
+        ((idx++)) || true
         printf "%-4s  %-12s  %-8s  %-8s  %s\n" "$idx" "${name:--}" "tcp+udp" "$port" "$target"
     done < "$NFT_CONF"
 }
