@@ -322,21 +322,36 @@ realm() {
     bash <(curl -sL download.tapby.de/realm/install.sh)
 }
 
-# nft端口转发管理 — 下载远程脚本并调用
-nft_forward() {
-    # 自动下载安装 nft 脚本
-    if [[ ! -f /usr/local/bin/nft ]]; then
-        echo "* 正在下载 nft 端口转发脚本..."
-        wget -qO /usr/local/bin/nft https://raw.githubusercontent.com/xxy0op/gongju/refs/heads/main/nft || {
-            echo "x 下载失败，请检查网络"; return 1
-        }
-        chmod +x /usr/local/bin/nft
-        echo "* nft 脚本已安装"
-    fi
-
-    # 调用脚本的交互式菜单
-    /usr/local/bin/nft m
-}
+    nft端口转发管理 — 下载远程脚本并调用
+    nft_forward() {
+        local nft_script="/usr/local/bin/nft"
+        local nft_url="https://raw.githubusercontent.com/xxy0op/gongju/refs/heads/main/nft"
+    
+        echo "* NFT Port Forward 使用 nftables 管理端口转发"
+        echo "* 新版配置文件: /etc/nftables.d/port.nft"
+        echo "* 主配置会自动包含: /etc/nftables.conf -> /etc/nftables.d/port.nft"
+    
+        # 每次进入都拉取最新版，方便更新交互向导和规则模板
+        echo "* 正在检查/更新 nft 端口转发脚本..."
+        if command -v curl &>/dev/null; then
+            curl -fsSL "$nft_url" -o "$nft_script" || {
+                echo "x 下载失败，请检查网络"; return 1
+            }
+        elif command -v wget &>/dev/null; then
+            wget -qO "$nft_script" "$nft_url" || {
+                echo "x 下载失败，请检查网络"; return 1
+            }
+        else
+            echo "x 未找到 curl 或 wget，无法下载 nft 脚本"
+            return 1
+        fi
+    
+        chmod +x "$nft_script"
+        echo "* nft 脚本已就绪: $nft_script"
+        echo "* 即将进入交互式菜单，可按提示逐步填写监听IP、端口、目标IP、目标端口和协议。"
+    
+        "$nft_script" menu
+    }
 
 # 安装DDNS脚本
 ddns() {
