@@ -322,7 +322,7 @@ realm() {
     bash <(curl -sL download.tapby.de/realm/install.sh)
 }
 
-    nft端口转发管理 — 下载远程脚本并调用
+    #nft端口转发管理 — 下载远程脚本并调用
     nft_forward() {
         local nft_script="/usr/local/bin/nft"
         local nft_url="https://raw.githubusercontent.com/xxy0op/gongju/refs/heads/main/nft"
