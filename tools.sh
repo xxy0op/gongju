@@ -104,7 +104,7 @@ get_version() {
 xrayr() {
     echo "正在安装 XrayR 脚本..."
     # 执行 XrayR 安装脚本
-    bash <(curl -fsSL https://raw.githubusercontent.com/xxy0op/reb-xrayr/main/install.sh) https://github.com/xxy0op/reb-xrayr.git main
+    bash <(curl -fsSL https://raw.githubusercontent.com/xxy0op/reb-xrayr/main/install.sh)
 }
 
 # 安装 Warp 脚本
